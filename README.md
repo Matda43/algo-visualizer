@@ -1,7 +1,7 @@
 # 🎯 Algo Visualizer
 
-![Backend CI](https://github.com/TON_USER/algo-visualizer/actions/workflows/backend-ci.yml/badge.svg)
-![Frontend CI](https://github.com/TON_USER/algo-visualizer/actions/workflows/frontend-ci.yml/badge.svg)
+![Backend CI](https://github.com/Matda43/algo-visualizer/actions/workflows/backend-ci.yml/badge.svg)
+![Frontend CI](https://github.com/Matda43/algo-visualizer/actions/workflows/frontend-ci.yml/badge.svg)
 ![Java](https://img.shields.io/badge/Java-26-orange)
 ![Angular](https://img.shields.io/badge/Angular-19-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -10,12 +10,12 @@
 > avec système de progression XP.
 > Backend Java Spring Boot · Frontend Angular · WebSocket temps réel
 
-![demo](docs/demo.gif)  <-- à ajouter semaine 2
+![demo](docs/demo.gif)
 
 ## 🚀 Lancer en une commande
 
 \`\`\`bash
-git clone https://github.com/TON_USER/algo-visualizer.git
+git clone https://github.com/Matda43/algo-visualizer.git
 cd algo-visualizer
 docker compose up --build
 \`\`\`
