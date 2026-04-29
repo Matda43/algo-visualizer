@@ -6,7 +6,7 @@ backend/.mvn/
 *.war
 
 # ===== Angular / Node =====
-frontend/node_modules/
+node_modules/
 frontend/dist/
 frontend/.angular/
 
