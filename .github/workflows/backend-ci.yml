@@ -20,6 +20,10 @@ jobs:
           java-version: '26'
           distribution: 'oracle'
 
+      - name: Grant mvnw permissions
+        working-directory: backend
+        run: chmod +x mvnw
+
       - name: Cache Maven
         uses: actions/cache@v4
         with:
