@@ -1,0 +1,60 @@
+<div class="visualizer">
+
+  <!-- Controls -->
+  <div class="controls">
+
+    <select [value]="selectedAlgo()" (change)="onAlgoChange($any($event.target).value)"
+            [disabled]="isRunning()">
+      @for (algo of algorithms(); track algo) {
+        <option [value]="algo">{{ algo }}</option>
+      }
+    </select>
+
+    <label>
+      Taille : {{ arraySize() }}
+      <input type="range" min="10" max="100"
+             [value]="arraySize()"
+             [disabled]="isRunning()"
+             (input)="onArraySizeChange(+$any($event.target).value)">
+    </label>
+
+    <label>
+      Vitesse : {{ speedMs() }}ms
+      <input type="range" min="10" max="500"
+             [value]="speedMs()"
+             [disabled]="isRunning()"
+             (input)="onSpeedChange(+$any($event.target).value)">
+    </label>
+
+    <button (click)="generateArray()" [disabled]="isRunning()">
+      🔀 Nouveau tableau
+    </button>
+
+    <button (click)="start()" [disabled]="isRunning()" class="btn-start">
+      @if (isRunning()) {
+        ⏳ En cours...
+      } @else {
+        ▶ Lancer
+      }
+    </button>
+
+  </div>
+
+  <!-- Canvas -->
+  <canvas #canvas width="800" height="400"></canvas>
+
+  <!-- Stats -->
+  <div class="stats">
+    {{ statsLabel() }}
+  </div>
+
+  <!-- XP Bar -->
+  <div class="xp-bar">
+    <span>Niveau {{ level() }}</span>
+    <div class="progress">
+      <div class="progress-fill" [style.width.%]="xpProgress()"></div>
+    </div>
+    <span>{{ totalXp() }} XP</span>
+  </div>
+
+</div>
