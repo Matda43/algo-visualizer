@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: algo-visualizer-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/algoviz
+    username: algo
+    password: algo
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.algovisualizer: DEBUG
+    org.springframework.web.socket: INFO
