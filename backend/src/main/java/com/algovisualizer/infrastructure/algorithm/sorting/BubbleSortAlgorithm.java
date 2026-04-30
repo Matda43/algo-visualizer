@@ -27,6 +27,7 @@ public class BubbleSortAlgorithm implements SortingAlgorithm {
                     steps.add(new SortStep(StepType.SWAP, j, j + 1, arr.clone()));
                 }
             }
+            steps.add(new SortStep(StepType.SORTED, n - 1 - i, n - 1 - i, arr.clone()));
         }
         steps.add(new SortStep(StepType.DONE, -1, -1, arr));
         return steps;

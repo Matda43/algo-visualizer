@@ -38,7 +38,7 @@ public class AlgoSessionHandlerController {
 
         List<SortStep> steps = algo.generateSteps(req.array());
         String topic = "/topic/session." + req.sessionId();
-        broadcaster.stream(steps, topic);
+        broadcaster.stream(steps, topic, req.sessionId());
     }
 
     @MessageMapping("/session.speed")

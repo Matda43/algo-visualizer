@@ -1,16 +1,28 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, signal, computed, inject } from '@angular/core';
+import {
+  Component, ElementRef, OnDestroy, OnInit,
+  ViewChildren, QueryList, signal, computed, inject, AfterViewInit, ChangeDetectorRef
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { Subscription } from 'rxjs';
+import { Subscription, concatMap, timer, of } from 'rxjs';
 import { WebsocketService } from '../../core/websocket';
-import { xpActions } from '../../store/xp/xp.actions';
-import { selectLevel, selectTotalXp, selectXpProgress } from '../../store/xp/xp.selectors';
 
 interface SortStep {
   type: 'COMPARE' | 'SWAP' | 'PIVOT' | 'SORTED' | 'DONE';
   indexA: number;
   indexB: number;
   stateSnapshot: number[];
+}
+
+interface AlgoInstance {
+  name: string;
+  canvas?: HTMLCanvasElement;
+  ctx?: CanvasRenderingContext2D;
+  comparisons: number;
+  swaps: number;
+  done: boolean;
+  sortedIndices: Set<number>;
+  sub?: Subscription;
 }
 
 @Component({
@@ -20,41 +32,114 @@ interface SortStep {
   templateUrl: './sorting.html',
   styleUrl: './sorting.scss'
 })
-export class SortingComponent implements OnInit, OnDestroy {
-  @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChildren('algoCanvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
 
-  // Injection moderne
   private ws = inject(WebsocketService);
   private store = inject(Store);
+  private cdr = inject(ChangeDetectorRef);
 
-  // Signaux
-  algorithms = signal(['Bubble Sort', 'Quick Sort', 'Merge Sort', 'Heap Sort']);
-  selectedAlgo = signal('Bubble Sort');
+  readonly ALL_ALGOS = ['Bubble Sort', 'Quick Sort', 'Merge Sort', 'Heap Sort'];
+
+  selectedAlgos = signal<string[]>(['Bubble Sort']);
   arraySize = signal(50);
   speedMs = signal(100);
   isRunning = signal(false);
-  comparisons = signal(0);
-  swaps = signal(0);
 
-  // Signaux depuis le store NgRx
-  level = this.store.selectSignal(selectLevel);
-  totalXp = this.store.selectSignal(selectTotalXp);
-  xpProgress = this.store.selectSignal(selectXpProgress);
+  // Instances initialisées avec les noms dès le départ
+  instances = signal<AlgoInstance[]>([
+    { name: 'Bubble Sort', comparisons: 0, swaps: 0, done: false, sortedIndices: new Set() }
+  ]);
 
-  // Computed
-  canStart = computed(() => !this.isRunning());
-  statsLabel = computed(() =>
-    `🔍 ${this.comparisons()} comparaisons · 🔄 ${this.swaps()} échanges`
+  private currentArray: number[] = [];
+  private ro!: ResizeObserver;
+
+  allDone = computed(() =>
+    this.instances().length > 0 && this.instances().every(i => i.done)
   );
 
-  private ctx!: CanvasRenderingContext2D;
-  private sub!: Subscription;
-  private currentArray: number[] = [];
-
   ngOnInit(): void {
-    this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
-    this.generateArray();
     this.ws.connect().subscribe();
+    this.generateArray();
+  }
+
+  ngAfterViewInit(): void {
+    // Attendre que Angular rende les canvas
+    setTimeout(() => this.attachCanvases(), 0);
+
+    this.canvasRefs.changes.subscribe(() => {
+      setTimeout(() => this.attachCanvases(), 0);
+    });
+  }
+
+  private attachCanvases(): void {
+    const canvases = this.canvasRefs.toArray();
+    if (canvases.length === 0) return;
+
+    this.instances.update(list =>
+      list.map((inst, i) => {
+        const canvas = canvases[i]?.nativeElement;
+        if (!canvas) return inst;
+        const ctx = canvas.getContext('2d')!;
+        return { ...inst, canvas, ctx };
+      })
+    );
+
+    // ResizeObserver
+    if (this.ro) this.ro.disconnect();
+    this.ro = new ResizeObserver(() => this.resizeAll());
+    canvases.forEach(ref => {
+      const parent = ref.nativeElement.parentElement;
+      if (parent) this.ro.observe(parent);
+    });
+
+    setTimeout(() => {
+      this.resizeAll();
+      this.drawAll();
+    }, 50);
+  }
+
+  private resizeAll(): void {
+    this.instances().forEach(inst => {
+      if (!inst.canvas) return;
+      const parent = inst.canvas.parentElement;
+      if (!parent) return;
+      inst.canvas.width = parent.clientWidth;
+      inst.canvas.height = parent.clientHeight;
+    });
+    this.drawAll();
+  }
+
+  private drawAll(): void {
+    this.instances().forEach(inst => {
+      if (!inst.canvas || !inst.ctx) return;
+      this.drawArray(inst as Required<AlgoInstance>, this.currentArray, -1, -1, 'COMPARE');
+    });
+  }
+
+  toggleAlgo(algo: string): void {
+    if (this.isRunning()) return;
+    const current = this.selectedAlgos();
+    const next = current.includes(algo)
+      ? current.filter(a => a !== algo)
+      : [...current, algo];
+    if (next.length === 0) return;
+
+    this.selectedAlgos.set(next);
+
+    // Recréer les instances avec les noms dans l'ordre sélectionné
+    this.instances.set(
+      next.map(name => ({
+        name,
+        comparisons: 0, swaps: 0,
+        done: false,
+        sortedIndices: new Set<number>()
+      }))
+    );
+
+    // Forcer la détection de changement puis re-attacher les canvas
+    this.cdr.detectChanges();
+    setTimeout(() => this.attachCanvases(), 0);
   }
 
   generateArray(): void {
@@ -62,7 +147,7 @@ export class SortingComponent implements OnInit, OnDestroy {
       { length: this.arraySize() },
       () => Math.floor(Math.random() * 300) + 10
     );
-    this.drawArray(this.currentArray, -1, -1, 'COMPARE');
+    this.drawAll();
   }
 
   onArraySizeChange(value: number): void {
@@ -70,72 +155,130 @@ export class SortingComponent implements OnInit, OnDestroy {
     this.generateArray();
   }
 
-  onAlgoChange(value: string): void {
-    this.selectedAlgo.set(value);
-  }
-
   onSpeedChange(value: number): void {
     this.speedMs.set(value);
-    const sessionId = 'current';
-    this.ws.send('/app/session.speed', { sessionId, speedMs: value });
   }
 
   start(): void {
     if (this.isRunning()) return;
     this.isRunning.set(true);
-    this.comparisons.set(0);
-    this.swaps.set(0);
 
+    this.instances.update(list =>
+      list.map(inst => ({
+        ...inst,
+        comparisons: 0, swaps: 0,
+        done: false,
+        sortedIndices: new Set<number>()
+      }))
+    );
+
+    this.instances().forEach(inst => {
+      if (inst.canvas && inst.ctx) this.runAlgo(inst as Required<AlgoInstance>);
+    });
+  }
+
+  private runAlgo(inst: Required<AlgoInstance>): void {
     const sessionId = crypto.randomUUID();
+    const algoName = inst.name;
 
-    this.sub = this.ws
+    inst.sub = this.ws
       .subscribe<SortStep>(`/topic/session.${sessionId}`)
+      .pipe(
+        concatMap(step => {
+          const delay = this.speedMs();
+          return delay <= 16 ? of(step) : timer(delay).pipe(concatMap(() => of(step)));
+        })
+      )
       .subscribe(step => {
-        this.drawArray(step.stateSnapshot, step.indexA, step.indexB, step.type);
-        this.store.dispatch(xpActions.stepReceived());
+        this.instances.update(list =>
+          list.map(i => {
+            if (i.name !== algoName) return i;
+            const updated = { ...i };
+            if (step.type === 'COMPARE') updated.comparisons++;
+            if (step.type === 'SWAP') updated.swaps++;
+            if (step.type === 'SORTED') {
+              updated.sortedIndices = new Set([...i.sortedIndices, step.indexA]);
+            }
+            if (step.type === 'DONE') {
+              updated.done = true;
+              updated.sortedIndices = new Set(
+                Array.from({ length: this.arraySize() }, (_, k) => k)
+              );
+            }
+            return updated;
+          })
+        );
 
-        if (step.type === 'COMPARE') this.comparisons.update(v => v + 1);
-        if (step.type === 'SWAP') this.swaps.update(v => v + 1);
+        const current = this.instances().find(i => i.name === algoName);
+        if (current?.canvas && current?.ctx) {
+          this.drawArray(current as Required<AlgoInstance>, step.stateSnapshot, step.indexA, step.indexB, step.type);
+        }
 
-        if (step.type === 'DONE') {
+        if (step.type === 'DONE' && this.allDone()) {
           this.isRunning.set(false);
-          this.store.dispatch(xpActions.sessionComplete({ xpGained: 10 }));
         }
       });
 
     this.ws.send('/app/session.start', {
-      algo: this.selectedAlgo(),
+      algo: inst.name,
       array: this.currentArray,
       sessionId
     });
   }
 
-  private drawArray(arr: number[], indexA: number, indexB: number, type: string): void {
-    const canvas = this.canvasRef.nativeElement;
+  private drawArray(
+    inst: Required<AlgoInstance>,
+    arr: number[],
+    indexA: number,
+    indexB: number,
+    type: string
+  ): void {
+    const { canvas, ctx, sortedIndices } = inst;
     const w = canvas.width;
     const h = canvas.height;
-    this.ctx.clearRect(0, 0, w, h);
+    if (!w || !h || !arr.length) return;
+
+    ctx.clearRect(0, 0, w, h);
     const barWidth = w / arr.length;
 
     arr.forEach((val, i) => {
-      this.ctx.fillStyle =
-        i === indexA || i === indexB
-          ? type === 'SWAP'  ? '#D85A30'
-          : type === 'PIVOT' ? '#BA7517'
-          : '#1D9E75'
-          : '#7F77DD';
+      let color: string;
+      if (sortedIndices.has(i)) {
+        color = '#e8ff00';
+      } else if (i === indexA || i === indexB) {
+        color = type === 'SWAP'  ? '#D85A30'
+              : type === 'PIVOT' ? '#BA7517'
+              : '#1D9E75';
+      } else {
+        color = 'rgba(108, 99, 212, 0.8)';
+      }
 
-      this.ctx.fillRect(
-        i * barWidth,
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        i * barWidth + 0.5,
         h - (val / 310) * h,
-        barWidth - 1,
+        Math.max(barWidth - 1, 1),
         (val / 310) * h
       );
     });
+
+    // Label
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '600 13px Inter, sans-serif';
+
+    // Badge DONE
+    if (inst.done) {
+      ctx.fillStyle = 'rgba(232,255,0,0.15)';
+      ctx.fillRect(w - 80, 8, 68, 22);
+      ctx.fillStyle = '#e8ff00';
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillText('TERMINÉ ✓', w - 74, 23);
+    }
   }
 
   ngOnDestroy(): void {
-    this.sub?.unsubscribe();
+    this.instances().forEach(inst => inst.sub?.unsubscribe());
+    this.ro?.disconnect();
     this.ws.disconnect();
   }
 }

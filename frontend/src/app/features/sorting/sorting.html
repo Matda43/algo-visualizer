@@ -1,60 +1,120 @@
-<div class="visualizer">
+<div class="page">
 
-  <!-- Controls -->
-  <div class="controls">
+  <div class="layout">
 
-    <select [value]="selectedAlgo()" (change)="onAlgoChange($any($event.target).value)"
-            [disabled]="isRunning()">
-      @for (algo of algorithms(); track algo) {
-        <option [value]="algo">{{ algo }}</option>
-      }
-    </select>
+    <!-- Sidebar -->
+    <aside class="sidebar">
 
-    <label>
-      Taille : {{ arraySize() }}
-      <input type="range" min="10" max="100"
-             [value]="arraySize()"
-             [disabled]="isRunning()"
-             (input)="onArraySizeChange(+$any($event.target).value)">
-    </label>
+      <div class="control-group">
+        <div class="control-label">Algorithmes</div>
+        <div class="algo-list">
+          @for (algo of ALL_ALGOS; track algo) {
+            <button class="algo-btn"
+                    [class.selected]="selectedAlgos().includes(algo)"
+                    [disabled]="isRunning()"
+                    (click)="toggleAlgo(algo)">
+              <span class="algo-check">
+                @if (selectedAlgos().includes(algo)) { ✓ }
+              </span>
+              {{ algo }}
+            </button>
+          }
+        </div>
+        <p class="hint">{{ selectedAlgos().length }} sélectionné(s)</p>
+      </div>
 
-    <label>
-      Vitesse : {{ speedMs() }}ms
-      <input type="range" min="10" max="500"
-             [value]="speedMs()"
-             [disabled]="isRunning()"
-             (input)="onSpeedChange(+$any($event.target).value)">
-    </label>
+      <div class="control-group">
+        <div class="control-label">
+          Taille
+          <span class="control-value">{{ arraySize() }}</span>
+        </div>
+        <input type="range" min="10" max="150" class="slider"
+               [value]="arraySize()"
+               [disabled]="isRunning()"
+               (input)="onArraySizeChange(+$any($event.target).value)">
+        <div class="slider-bounds"><span>10</span><span>150</span></div>
+      </div>
 
-    <button (click)="generateArray()" [disabled]="isRunning()">
-      🔀 Nouveau tableau
-    </button>
+      <div class="control-group">
+        <div class="control-label">
+          Délai
+          <span class="control-value">{{ speedMs() }}ms</span>
+        </div>
+        <input type="range" min="1" max="500" class="slider"
+               [value]="speedMs()"
+               (input)="onSpeedChange(+$any($event.target).value)">
+        <div class="slider-bounds"><span>Rapide</span><span>Lent</span></div>
+      </div>
 
-    <button (click)="start()" [disabled]="isRunning()" class="btn-start">
-      @if (isRunning()) {
-        ⏳ En cours...
-      } @else {
-        ▶ Lancer
-      }
-    </button>
+      <div class="actions">
+        <button class="btn btn-secondary" [disabled]="isRunning()" (click)="generateArray()">
+          Nouveau tableau
+        </button>
+        <button class="btn btn-primary" [disabled]="isRunning()" (click)="start()">
+          @if (isRunning()) {
+            <span class="spinner"></span> En cours
+          } @else {
+            ▶ Lancer
+          }
+        </button>
+      </div>
 
+      <div class="legend">
+        <div class="legend-item">
+          <span class="dot" style="background:rgba(108,99,212,0.8)"></span>
+          <span>Non trié</span>
+        </div>
+        <div class="legend-item">
+          <span class="dot" style="background:#1D9E75"></span>
+          <span>Comparaison</span>
+        </div>
+        <div class="legend-item">
+          <span class="dot" style="background:#D85A30"></span>
+          <span>Échange</span>
+        </div>
+        <div class="legend-item">
+          <span class="dot" style="background:#BA7517"></span>
+          <span>Pivot</span>
+        </div>
+        <div class="legend-item">
+          <span class="dot" style="background:#e8ff00"></span>
+          <span>Trié</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Zone multi-canvas -->
+    <main class="main">
+      <div class="canvas-grid" [class.grid-1]="selectedAlgos().length === 1"
+                                [class.grid-2]="selectedAlgos().length === 2"
+                                [class.grid-3]="selectedAlgos().length === 3"
+                                [class.grid-4]="selectedAlgos().length === 4">
+        @for (inst of instances(); track inst.name) {
+          <div class="canvas-wrapper">
+
+            <div class="stats-bar">
+              <div class="stat-group">
+                <span class="stat-algo">{{ inst.name }}</span>
+                <div class="stat-divider"></div>
+                <div class="stat-row">
+                  <div class="stat">
+                    <span class="stat-value">{{ inst.comparisons }}</span>
+                    <span class="stat-label">Comp.</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value">{{ inst.swaps }}</span>
+                    <span class="stat-label">Éch.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <canvas #algoCanvas></canvas>
+          </div>
+        }
+      </div>
+
+    </main>
   </div>
-
-  <!-- Canvas -->
-  <canvas #canvas width="800" height="400"></canvas>
-
-  <!-- Stats -->
-  <div class="stats">
-    {{ statsLabel() }}
-  </div>
-
-  <!-- XP Bar -->
-  <div class="xp-bar">
-    <span>Niveau {{ level() }}</span>
-    <div class="progress">
-      <div class="progress-fill" [style.width.%]="xpProgress()"></div>
-    </div>
-    <span>{{ totalXp() }} XP</span>
-  </div>
-
 </div>
