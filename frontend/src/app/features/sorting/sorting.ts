@@ -4,7 +4,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { Subscription, concatMap, timer, of } from 'rxjs';
+import { Subscription, concatMap, timer, of, Observable } from 'rxjs';
 import { WebsocketService } from '../../core/websocket';
 
 interface SortStep {
@@ -22,6 +22,7 @@ interface AlgoInstance {
   swaps: number;
   done: boolean;
   sortedIndices: Set<number>;
+  lastSnapshot?: number[];
   sub?: Subscription;
 }
 
@@ -45,6 +46,7 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
   arraySize = signal(50);
   speedMs = signal(100);
   isRunning = signal(false);
+  isPaused = signal(false);
 
   // Instances initialisées avec les noms dès le départ
   instances = signal<AlgoInstance[]>([
@@ -113,7 +115,8 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
   private drawAll(): void {
     this.instances().forEach(inst => {
       if (!inst.canvas || !inst.ctx) return;
-      this.drawArray(inst as Required<AlgoInstance>, this.currentArray, -1, -1, 'COMPARE');
+      const arr = inst.lastSnapshot ?? this.currentArray;
+      this.drawArray(inst as Required<AlgoInstance>, arr, -1, -1, 'COMPARE');
     });
   }
 
@@ -147,6 +150,18 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
       { length: this.arraySize() },
       () => Math.floor(Math.random() * 300) + 10
     );
+
+    this.instances.update(list =>
+      list.map(i => ({
+        ...i,
+        comparisons: 0,
+        swaps: 0,
+        done: false,
+        sortedIndices: new Set<number>(),
+        lastSnapshot: undefined,   // ← reset
+      }))
+    );
+
     this.drawAll();
   }
 
@@ -161,6 +176,7 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   start(): void {
     if (this.isRunning()) return;
+    this.isPaused.set(false);
     this.isRunning.set(true);
 
     this.instances.update(list =>
@@ -177,6 +193,10 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  togglePause(): void {
+    this.isPaused.update(v => !v);
+  }
+
   private runAlgo(inst: Required<AlgoInstance>): void {
     const sessionId = crypto.randomUUID();
     const algoName = inst.name;
@@ -185,8 +205,14 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe<SortStep>(`/topic/session.${sessionId}`)
       .pipe(
         concatMap(step => {
+          const waitIfPaused = (): Observable<SortStep> =>
+            this.isPaused()
+              ? timer(100).pipe(concatMap(() => waitIfPaused()))
+              : of(step);
+
           const delay = this.speedMs();
-          return delay <= 16 ? of(step) : timer(delay).pipe(concatMap(() => of(step)));
+          const base$ = delay <= 16 ? of(step) : timer(delay).pipe(concatMap(() => of(step)));
+          return base$.pipe(concatMap(() => waitIfPaused()));
         })
       )
       .subscribe(step => {
@@ -195,7 +221,7 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
             if (i.name !== algoName) return i;
             const updated = { ...i };
             if (step.type === 'COMPARE') updated.comparisons++;
-            if (step.type === 'SWAP') updated.swaps++;
+            if (step.type === 'SWAP')    updated.swaps++;
             if (step.type === 'SORTED') {
               updated.sortedIndices = new Set([...i.sortedIndices, step.indexA]);
             }
@@ -205,6 +231,7 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
                 Array.from({ length: this.arraySize() }, (_, k) => k)
               );
             }
+            updated.lastSnapshot = step.stateSnapshot; // ← ajouter
             return updated;
           })
         );
@@ -261,19 +288,6 @@ export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
         (val / 310) * h
       );
     });
-
-    // Label
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '600 13px Inter, sans-serif';
-
-    // Badge DONE
-    if (inst.done) {
-      ctx.fillStyle = 'rgba(232,255,0,0.15)';
-      ctx.fillRect(w - 80, 8, 68, 22);
-      ctx.fillStyle = '#e8ff00';
-      ctx.font = '600 11px Inter, sans-serif';
-      ctx.fillText('TERMINÉ ✓', w - 74, 23);
-    }
   }
 
   ngOnDestroy(): void {

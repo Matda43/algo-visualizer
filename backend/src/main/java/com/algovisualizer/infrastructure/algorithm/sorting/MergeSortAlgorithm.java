@@ -44,6 +44,12 @@ public class MergeSortAlgorithm implements SortingAlgorithm {
         }
         while (i <= mid) arr[k++] = tmp[i++];
         while (j <= right) arr[k++] = tmp[j++];
+
+        if (left == 0 && right == arr.length - 1) {
+            for (int idx = 0; idx < arr.length; idx++) {
+                steps.add(new SortStep(StepType.SORTED, idx, idx, arr.clone()));
+            }
+        }
     }
 
     @Override public String getName() { return "Merge Sort"; }

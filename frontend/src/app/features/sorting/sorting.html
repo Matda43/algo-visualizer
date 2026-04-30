@@ -28,7 +28,7 @@
           Taille
           <span class="control-value">{{ arraySize() }}</span>
         </div>
-        <input type="range" min="10" max="150" class="slider"
+        <input type="range" min="2" max="150" class="slider"
                [value]="arraySize()"
                [disabled]="isRunning()"
                (input)="onArraySizeChange(+$any($event.target).value)">
@@ -47,12 +47,18 @@
       </div>
 
       <div class="actions">
-        <button class="btn btn-secondary" [disabled]="isRunning()" (click)="generateArray()">
+        <button class="btn btn-secondary" 
+                [disabled]="isRunning()" 
+                (click)="generateArray()">
           Nouveau tableau
         </button>
-        <button class="btn btn-primary" [disabled]="isRunning()" (click)="start()">
-          @if (isRunning()) {
-            <span class="spinner"></span> En cours
+
+        <button class="btn btn-primary" 
+                (click)="isRunning() ? togglePause() : start()">
+          @if (isRunning() && !isPaused()) {
+            ⏸ Pause
+          } @else if (isPaused()) {
+            ▶ Reprendre
           } @else {
             ▶ Lancer
           }
@@ -111,6 +117,14 @@
             </div>
 
             <canvas #algoCanvas></canvas>
+
+            @if (inst.done) {
+              <div class="done-banner">
+                <span class="done-icon">✓</span>
+                Terminé
+              </div>
+            }
+
           </div>
         }
       </div>

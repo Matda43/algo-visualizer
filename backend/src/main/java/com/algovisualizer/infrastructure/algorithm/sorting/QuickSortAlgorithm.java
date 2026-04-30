@@ -43,6 +43,7 @@ public class QuickSortAlgorithm implements SortingAlgorithm {
         }
         int tmp = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = tmp;
         steps.add(new SortStep(StepType.SWAP, i + 1, high, arr.clone()));
+        steps.add(new SortStep(StepType.SORTED, i + 1, i + 1, arr.clone()));
         return i + 1;
     }
 
