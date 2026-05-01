@@ -1,134 +1,273 @@
-<div class="page">
+<div class="page"
+     role="presentation"
+     (click)="showRunDropdown() && showRunDropdown.set(false)"
+     (keydown.escape)="showRunDropdown.set(false)">
 
-  <div class="layout">
+  <!-- Topbar : uniquement les boutons d'action, centrés -->
+  <div class="topbar">
+    <div class="topbar-actions">
+      <button class="btn btn-icon" title="Randomize"
+              [disabled]="isRunning()" (click)="generateArray()">⟳</button>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
+      <div class="run-dropdown-wrapper">
+        <div class="run-btn-group">
+          <button class="btn btn-primary btn-run"
+                  [disabled]="isRunning() && !isPaused()"
+                  (click)="isRunning() ? togglePause() : start()">
+            @if (isRunning() && !isPaused()) { ⏸ Pause }
+            @else if (isPaused()) { ▶ Reprendre }
+            @else { ▶ Lancer }
+          </button>
+          @if (!isRunning()) {
+            <button class="btn btn-primary btn-run-arrow"
+                    (click)="$event.stopPropagation(); toggleRunDropdown()">▾</button>
+          }
+        </div>
 
-      <div class="control-group">
-        <div class="control-label">Algorithmes</div>
-        <div class="algo-list">
-          @for (algo of ALL_ALGOS; track algo) {
-            <button class="algo-btn"
-                    [class.selected]="selectedAlgos().includes(algo)"
-                    [disabled]="isRunning()"
-                    (click)="toggleAlgo(algo)">
-              <span class="algo-check">
-                @if (selectedAlgos().includes(algo)) { ✓ }
-              </span>
-              {{ algo }}
+        @if (showRunDropdown() && !isRunning()) {
+          <div class="run-dropdown" role="menu">
+            <button class="run-dropdown-item" (click)="start()">
+              <span class="dropdown-icon">▶</span>
+              <div>
+                <div class="dropdown-title">Lancer</div>
+                <div class="dropdown-desc">Visualiser étape par étape</div>
+              </div>
             </button>
-          }
-        </div>
-        <p class="hint">{{ selectedAlgos().length }} sélectionné(s)</p>
-      </div>
-
-      <div class="control-group">
-        <div class="control-label">
-          Taille
-          <span class="control-value">{{ arraySize() }}</span>
-        </div>
-        <input type="range" min="2" max="150" class="slider"
-               [value]="arraySize()"
-               [disabled]="isRunning()"
-               (input)="onArraySizeChange(+$any($event.target).value)">
-        <div class="slider-bounds"><span>10</span><span>150</span></div>
-      </div>
-
-      <div class="control-group">
-        <div class="control-label">
-          Délai
-          <span class="control-value">{{ speedMs() }}ms</span>
-        </div>
-        <input type="range" min="1" max="500" class="slider"
-               [value]="speedMs()"
-               (input)="onSpeedChange(+$any($event.target).value)">
-        <div class="slider-bounds"><span>Rapide</span><span>Lent</span></div>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-secondary" 
-                [disabled]="isRunning()" 
-                (click)="generateArray()">
-          Nouveau tableau
-        </button>
-
-        <button class="btn btn-primary" 
-                (click)="isRunning() ? togglePause() : start()">
-          @if (isRunning() && !isPaused()) {
-            ⏸ Pause
-          } @else if (isPaused()) {
-            ▶ Reprendre
-          } @else {
-            ▶ Lancer
-          }
-        </button>
-      </div>
-
-      <div class="legend">
-        <div class="legend-item">
-          <span class="dot" style="background:rgba(108,99,212,0.8)"></span>
-          <span>Non trié</span>
-        </div>
-        <div class="legend-item">
-          <span class="dot" style="background:#1D9E75"></span>
-          <span>Comparaison</span>
-        </div>
-        <div class="legend-item">
-          <span class="dot" style="background:#D85A30"></span>
-          <span>Échange</span>
-        </div>
-        <div class="legend-item">
-          <span class="dot" style="background:#BA7517"></span>
-          <span>Pivot</span>
-        </div>
-        <div class="legend-item">
-          <span class="dot" style="background:#e8ff00"></span>
-          <span>Trié</span>
-        </div>
-      </div>
-
-    </aside>
-
-    <!-- Zone multi-canvas -->
-    <main class="main">
-      <div class="canvas-grid" [class.grid-1]="selectedAlgos().length === 1"
-                                [class.grid-2]="selectedAlgos().length === 2"
-                                [class.grid-3]="selectedAlgos().length === 3"
-                                [class.grid-4]="selectedAlgos().length === 4">
-        @for (inst of instances(); track inst.name) {
-          <div class="canvas-wrapper">
-
-            <div class="stats-bar">
-              <div class="stat-group">
-                <span class="stat-algo">{{ inst.name }}</span>
-                <div class="stat-divider"></div>
-                <div class="stat-row">
-                  <div class="stat">
-                    <span class="stat-value">{{ inst.comparisons }}</span>
-                    <span class="stat-label">Comp.</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ inst.swaps }}</span>
-                    <span class="stat-label">Éch.</span>
-                  </div>
-                </div>
+            <button class="run-dropdown-item" (click)="execute()">
+              <span class="dropdown-icon">⚡</span>
+              <div>
+                <div class="dropdown-title">Exécuter</div>
+                <div class="dropdown-desc">Résultat instantané</div>
               </div>
-            </div>
-
-            <canvas #algoCanvas></canvas>
-
-            @if (inst.done) {
-              <div class="done-banner">
-                <span class="done-icon">✓</span>
-                Terminé
-              </div>
-            }
-
+            </button>
           </div>
         }
       </div>
 
+      <button class="btn btn-icon" title="Réinitialiser"
+              [disabled]="isRunning()" (click)="reinitialize()">↺</button>
+
+      @if (showNextStep()) {
+        <button class="btn btn-step" (click)="nextStep()">⏭ Étape</button>
+      }
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- Sidebar avec bouton ✕ en haut -->
+    @if (sidebarOpen()) {
+      <aside class="sidebar">
+
+        <div class="sidebar-header">
+          <span class="sidebar-title">Paramètres</span>
+          <button class="btn btn-icon btn-close" (click)="toggleSidebar()" title="Fermer">✕</button>
+        </div>
+
+        <div class="control-group">
+          <div class="mode-toggle">
+            <div class="control-label">Algorithmes</div>
+            <button class="toggle-btn" [class.active]="comparisonMode()"
+                    [disabled]="isRunning()" (click)="toggleComparisonMode()">
+              <span class="toggle-thumb"></span>
+            </button>
+          </div>
+          <div class="algo-list">
+            @for (algo of ALL_ALGOS; track algo) {
+              <div class="algo-row">
+                <button class="algo-btn"
+                        [class.selected]="selectedAlgos().includes(algo)"
+                        [disabled]="isRunning()"
+                        (click)="toggleAlgo(algo)">
+                  <span class="algo-check">@if (selectedAlgos().includes(algo)) { ✓ }</span>
+                  {{ algo }}
+                </button>
+                @if (!comparisonMode()) {
+                  <button class="info-btn" [class.active]="selectedCodeAlgo() === algo"
+                          (click)="toggleCodePanel(algo)">ⓘ</button>
+                }
+              </div>
+            }
+          </div>
+          @if (comparisonMode()) {
+            <p class="hint">{{ selectedAlgos().length }} sélectionné(s)</p>
+          }
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Paramètres</div>
+
+          <div class="param-row">
+            <span class="param-label-text">Délai</span>
+            <span class="control-value">{{ speedMs() }}ms</span>
+          </div>
+          <input type="range" min="1" max="500" class="slider"
+                 [value]="speedMs()"
+                 (input)="onSpeedChange(+$any($event.target).value)">
+          <div class="slider-bounds"><span>Rapide</span><span>Lent</span></div>
+
+          <div class="param-row" style="margin-top:10px">
+            <span class="param-label-text">Taille</span>
+            <div class="number-input">
+              <button class="number-btn" [disabled]="isRunning() || arraySize() <= 10"
+                      (click)="incrementSize(-1)">−</button>
+              <input type="number" class="number-field"
+                     [value]="arraySize()" min="10" max="1000"
+                     [disabled]="isRunning()"
+                     (change)="onArraySizeInput(+$any($event.target).value)">
+              <button class="number-btn" [disabled]="isRunning() || arraySize() >= 1000"
+                      (click)="incrementSize(1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">Entrée / Sortie</div>
+          <div class="io-label-row">
+            <span class="io-tag">arr =</span>
+            <span class="io-hint">virgule ou espace</span>
+          </div>
+          <textarea class="io-input" rows="3"
+                    placeholder="Ex: 5, 3, 8, 1&#10;(vide = aléatoire)"
+                    [value]="userInputRaw()"
+                    (input)="userInputRaw.set($any($event.target).value)"
+                    (blur)="generateArray()"></textarea>
+
+          <div class="io-label-row" style="margin-top:10px">
+            <span class="io-tag">output =</span>
+          </div>
+          <div class="io-result">
+            @if (outputNumbers().length > 0) {
+              {{ formatOutput(outputNumbers()) }}
+            } @else {
+              <span class="io-placeholder">—</span>
+            }
+          </div>
+        </div>
+
+      </aside>
+    }
+
+    @if (!sidebarOpen()) {
+      <button class="btn btn-icon sidebar-open-btn" (click)="toggleSidebar()" title="Ouvrir">☰</button>
+    }
+
+    <!-- Main -->
+    <main class="main">
+      <div class="viz-grid"
+           [class.grid-1]="instances().length === 1"
+           [class.grid-2]="instances().length === 2"
+           [class.grid-3]="instances().length === 3"
+           [class.grid-4]="instances().length === 4">
+
+        @for (inst of instances(); track inst.name) {
+          <div class="viz-wrapper">
+            <div class="stats-bar">
+              <span class="stat-algo">{{ inst.name }}</span>
+              <div class="stat-divider"></div>
+              <div class="stat-row">
+                <div class="stat">
+                  <span class="stat-value color-compare">{{ inst.comparisons }}</span>
+                  <span class="stat-label">Comp.</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-value color-swap">{{ inst.swaps }}</span>
+                  <span class="stat-label">Éch.</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-value color-pivot">{{ inst.pivots }}</span>
+                  <span class="stat-label">Pivots</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-value color-sorted">{{ inst.sortedCount }}</span>
+                  <span class="stat-label">Triés</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-value color-unsorted">{{ unsortedCount(inst) }}</span>
+                  <span class="stat-label">Non triés</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bars-area">
+              <div class="y-axis">
+                @for (tick of [100, 75, 50, 25, 0]; track tick) {
+                  <div class="y-tick" [style.bottom.%]="tick">
+                    <span class="y-label">{{ (maxValue() * tick / 100) | number:'1.0-0' }}</span>
+                    <div class="y-line"></div>
+                  </div>
+                }
+              </div>
+              <div class="bars-container">
+                @for (bar of inst.bars; track $index) {
+                  <div class="bar"
+                       [class.state-compare]="bar.state === 'compare'"
+                       [class.state-swap]="bar.state === 'swap'"
+                       [class.state-pivot]="bar.state === 'pivot'"
+                       [class.state-sorted]="bar.state === 'sorted'"
+                       [style.height.%]="barHeightPercent(bar.value)">
+                  </div>
+                }
+              </div>
+            </div>
+
+            @if (inst.done) {
+              <div class="done-banner"><span class="done-icon">✓</span> Terminé</div>
+            }
+          </div>
+        }
+      </div>
     </main>
+
+    @if (selectedCodeAlgo() && !comparisonMode()) {
+      <aside class="code-panel">
+        <div class="code-header">
+          <select class="code-select" [value]="selectedLanguage()"
+                  (change)="selectLanguage($any($event.target).value)">
+            @for (lang of CODE_LANGUAGES; track lang) {
+              <option [value]="lang">{{ lang }}</option>
+            }
+          </select>
+          <select class="code-select" [value]="selectedDataType()"
+                  (change)="selectDataType($any($event.target).value)">
+            @for (dt of DATA_TYPES; track dt) {
+              <option [value]="dt">{{ dt }}</option>
+            }
+          </select>
+          @if (complexity()) {
+            <span class="complexity-badge">{{ complexity()!.average }}</span>
+          }
+        </div>
+        @if (complexity(); as c) {
+          <div class="complexity-grid">
+            <div class="complexity-cell">
+              <span class="complexity-label">Best</span>
+              <span class="complexity-value best">{{ c.best }}</span>
+            </div>
+            <div class="complexity-cell">
+              <span class="complexity-label">Avg</span>
+              <span class="complexity-value avg">{{ c.average }}</span>
+            </div>
+            <div class="complexity-cell">
+              <span class="complexity-label">Worst</span>
+              <span class="complexity-value worst">{{ c.worst }}</span>
+            </div>
+            <div class="complexity-cell">
+              <span class="complexity-label">Space</span>
+              <span class="complexity-value space">{{ c.space }}</span>
+            </div>
+          </div>
+        }
+        <div class="code-body">
+          @for (line of codeLines(); track $index) {
+            <div class="code-line">
+              <span class="line-number">{{ $index + 1 }}</span>
+              <span class="line-content" [innerHTML]="highlightLine(line)"></span>
+            </div>
+          }
+        </div>
+      </aside>
+    }
+
   </div>
 </div>

@@ -26,7 +26,7 @@ public class StepBroadcasterService {
                 for (SortStep step : steps) {
                     template.convertAndSend(topic, step);
                     int delay = speedMap.getOrDefault(sessionId, new AtomicInteger(100)).get();
-                    Thread.sleep(delay);
+                    if (delay > 0) Thread.sleep(delay);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

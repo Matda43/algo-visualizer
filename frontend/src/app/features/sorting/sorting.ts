@@ -1,11 +1,13 @@
 import {
-  Component, ElementRef, OnDestroy, OnInit,
-  ViewChildren, QueryList, signal, computed, inject, AfterViewInit, ChangeDetectorRef
+  Component, OnDestroy, OnInit, ViewChildren, QueryList,
+  ElementRef, signal, computed, inject, AfterViewInit, ChangeDetectorRef
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Store } from '@ngrx/store';
-import { Subscription, concatMap, timer, of, Observable } from 'rxjs';
+import { Subject, Subscription, timer, of, Observable, takeUntil } from 'rxjs';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { WebsocketService } from '../../core/websocket';
+import { ALGO_CODE, CODE_LANGUAGES, CodeLanguage, ALGO_COMPLEXITY } from './code/algo-code.constants';
+import { DecimalPipe } from '@angular/common';
 
 interface SortStep {
   type: 'COMPARE' | 'SWAP' | 'PIVOT' | 'SORTED' | 'DONE';
@@ -14,285 +16,504 @@ interface SortStep {
   stateSnapshot: number[];
 }
 
-interface AlgoInstance {
-  name: string;
-  canvas?: HTMLCanvasElement;
-  ctx?: CanvasRenderingContext2D;
+interface ExecuteResult {
+  sortedArray: number[];
   comparisons: number;
   swaps: number;
+  pivots: number;
+  sessionId: string;
+}
+
+interface Bar {
+  value: number;
+  state: 'default' | 'compare' | 'swap' | 'pivot' | 'sorted';
+}
+
+interface AlgoInstance {
+  name: string;
+  bars: Bar[];
+  comparisons: number;
+  swaps: number;
+  pivots: number;
+  sortedCount: number;
   done: boolean;
   sortedIndices: Set<number>;
-  lastSnapshot?: number[];
+}
+
+interface AlgoQueue {
+  name: string;
+  queue: SortStep[];
+  done: boolean;
   sub?: Subscription;
 }
+
+export type DataType = 'int' | 'float' | 'double' | 'long';
+export const DATA_TYPES: DataType[] = ['int', 'float', 'double', 'long'];
 
 @Component({
   selector: 'app-sorting',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DecimalPipe],
   templateUrl: './sorting.html',
   styleUrl: './sorting.scss'
 })
-export class SortingComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChildren('algoCanvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
+export class SortingComponent implements OnInit, OnDestroy {
+  private ws        = inject(WebsocketService);
+  private cdr       = inject(ChangeDetectorRef);
+  private sanitizer = inject(DomSanitizer);
 
-  private ws = inject(WebsocketService);
-  private store = inject(Store);
-  private cdr = inject(ChangeDetectorRef);
+  readonly ALL_ALGOS      = ['Bubble Sort', 'Quick Sort', 'Merge Sort', 'Heap Sort'];
+  readonly CODE_LANGUAGES = CODE_LANGUAGES;
+  readonly DATA_TYPES     = DATA_TYPES;
 
-  readonly ALL_ALGOS = ['Bubble Sort', 'Quick Sort', 'Merge Sort', 'Heap Sort'];
+  comparisonMode   = signal(false);
+  isPaused         = signal(false);
+  isRunning        = signal(false);
+  sidebarOpen      = signal(true);
+  showRunDropdown  = signal(false);
 
-  selectedAlgos = signal<string[]>(['Bubble Sort']);
-  arraySize = signal(50);
-  speedMs = signal(100);
-  isRunning = signal(false);
-  isPaused = signal(false);
+  selectedAlgos    = signal<string[]>(['Bubble Sort']);
+  arraySize        = signal(50);
+  speedMs          = signal(1);
+  selectedDataType = signal<DataType>('int');
 
-  // Instances initialisées avec les noms dès le départ
-  instances = signal<AlgoInstance[]>([
-    { name: 'Bubble Sort', comparisons: 0, swaps: 0, done: false, sortedIndices: new Set() }
-  ]);
+  instances        = signal<AlgoInstance[]>([this.makeInstance('Bubble Sort', [])]);
 
+  selectedCodeAlgo = signal<string | null>(null);
+  selectedLanguage = signal<CodeLanguage>('Java');
+
+  userInputRaw     = signal('');
+  outputNumbers    = signal<number[]>([]);
+
+  private stepTrigger$ = new Subject<void>();
+  private destroy$     = new Subject<void>();
   private currentArray: number[] = [];
-  private ro!: ResizeObserver;
+  private initialArray: number[] = [];
 
-  allDone = computed(() =>
-    this.instances().length > 0 && this.instances().every(i => i.done)
-  );
+  private algoQueues: AlgoQueue[]  = [];
+  private syncLoopActive           = false;
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+
+  allDone      = computed(() => this.instances().length > 0 && this.instances().every(i => i.done));
+  showNextStep = computed(() => this.isPaused() && this.isRunning());
+  complexity   = computed(() => this.selectedCodeAlgo() ? (ALGO_COMPLEXITY[this.selectedCodeAlgo()!] ?? null) : null);
+
+  codeLines = computed(() => {
+    const algo = this.selectedCodeAlgo();
+    if (!algo) return [];
+    const code = ALGO_CODE[algo]?.[this.selectedLanguage()] ?? '';
+    return this.applyDataType(code, this.selectedDataType()).split('\n');
+  });
+
+  parsedInput = computed(() => {
+    const raw = this.userInputRaw().trim();
+    if (!raw) return null;
+    const nums = raw.split(/[,;\s]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
+    return nums.length > 0 ? nums : null;
+  });
+
+  maxValue = computed(() => {
+    const inst = this.instances()[0];
+    if (!inst?.bars.length) return 310;
+    return Math.max(...inst.bars.map(b => b.value), 1);
+  });
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     this.ws.connect().subscribe();
     this.generateArray();
   }
 
-  ngAfterViewInit(): void {
-    // Attendre que Angular rende les canvas
-    setTimeout(() => this.attachCanvases(), 0);
-
-    this.canvasRefs.changes.subscribe(() => {
-      setTimeout(() => this.attachCanvases(), 0);
-    });
+  ngOnDestroy(): void {
+    this.destroy$.next(); this.destroy$.complete();
+    this.ws.disconnect();
   }
 
-  private attachCanvases(): void {
-    const canvases = this.canvasRefs.toArray();
-    if (canvases.length === 0) return;
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
-    this.instances.update(list =>
-      list.map((inst, i) => {
-        const canvas = canvases[i]?.nativeElement;
-        if (!canvas) return inst;
-        const ctx = canvas.getContext('2d')!;
-        return { ...inst, canvas, ctx };
-      })
+  private makeInstance(name: string, arr: number[]): AlgoInstance {
+    return {
+      name,
+      bars: arr.map(v => ({ value: v, state: 'default' })),
+      comparisons: 0, swaps: 0, pivots: 0, sortedCount: 0,
+      done: false, sortedIndices: new Set()
+    };
+  }
+
+  unsortedCount(inst: AlgoInstance): number {
+    return this.arraySize() - inst.sortedIndices.size;
+  }
+
+  barHeightPercent(val: number): number {
+    return (val / this.maxValue()) * 100;
+  }
+
+  private applyDataType(code: string, type: DataType): string {
+    if (type === 'int') return code;
+    return code.replace(/\bint(?=\s+\w)/g, type).replace(/\bint\[\]/g, `${type}[]`);
+  }
+
+  formatOutput(values: number[]): string {
+    const type = this.selectedDataType();
+    return values.map(v => {
+      if (type === 'float')  return v.toFixed(2) + 'f';
+      if (type === 'double') return v.toFixed(4);
+      if (type === 'long')   return v.toString() + 'L';
+      return Math.round(v).toString();
+    }).join(', ');
+  }
+
+  private normalizeValue(v: number): number {
+    const type = this.selectedDataType();
+    if (type === 'float')  return parseFloat(v.toFixed(2));
+    if (type === 'double') return parseFloat(v.toFixed(4));
+    return Math.trunc(v);
+  }
+
+  // ── Array ─────────────────────────────────────────────────────────────────
+
+  generateArray(): void {
+    const parsed = this.parsedInput();
+    let arr: number[];
+    if (parsed) {
+      arr = parsed.map(v => this.normalizeValue(v));
+      this.arraySize.set(arr.length);
+    } else {
+      const type = this.selectedDataType();
+      arr = Array.from({ length: this.arraySize() }, () => {
+        if (type === 'float')  return parseFloat((Math.random() * 100 + 1).toFixed(2));
+        if (type === 'double') return parseFloat((Math.random() * 100 + 1).toFixed(4));
+        return Math.floor(Math.random() * 100) + 1;
+      });
+    }
+    this.currentArray = arr;
+    this.initialArray = [...arr];
+    this.outputNumbers.set([]);
+    this.rebuildInstances(arr);
+  }
+
+  reinitialize(): void {
+    if (this.isRunning()) return;
+    this.currentArray = [...this.initialArray];
+    this.outputNumbers.set([]);
+    this.rebuildInstances(this.currentArray);
+  }
+
+  private rebuildInstances(arr: number[]): void {
+    this.instances.set(
+      this.selectedAlgos().map(name => this.makeInstance(name, arr))
     );
-
-    // ResizeObserver
-    if (this.ro) this.ro.disconnect();
-    this.ro = new ResizeObserver(() => this.resizeAll());
-    canvases.forEach(ref => {
-      const parent = ref.nativeElement.parentElement;
-      if (parent) this.ro.observe(parent);
-    });
-
-    setTimeout(() => {
-      this.resizeAll();
-      this.drawAll();
-    }, 50);
   }
 
-  private resizeAll(): void {
-    this.instances().forEach(inst => {
-      if (!inst.canvas) return;
-      const parent = inst.canvas.parentElement;
-      if (!parent) return;
-      inst.canvas.width = parent.clientWidth;
-      inst.canvas.height = parent.clientHeight;
-    });
-    this.drawAll();
+  incrementSize(delta: number): void {
+    const next = Math.min(1000, Math.max(2, this.arraySize() + delta));
+    this.arraySize.set(next);
+    this.generateArray();
   }
 
-  private drawAll(): void {
-    this.instances().forEach(inst => {
-      if (!inst.canvas || !inst.ctx) return;
-      const arr = inst.lastSnapshot ?? this.currentArray;
-      this.drawArray(inst as Required<AlgoInstance>, arr, -1, -1, 'COMPARE');
-    });
+  onArraySizeInput(v: number): void {
+    this.arraySize.set(Math.min(1000, Math.max(2, v || 2)));
+    this.generateArray();
+  }
+
+  onSpeedChange(v: number): void { this.speedMs.set(v); }
+
+  // ── Mode ──────────────────────────────────────────────────────────────────
+
+  toggleComparisonMode(): void {
+    if (this.isRunning()) return;
+    const next = !this.comparisonMode();
+    this.comparisonMode.set(next);
+    if (!next) {
+      const first = this.selectedAlgos()[0];
+      this.selectedAlgos.set([first]);
+      this.rebuildInstances(this.currentArray);
+    }
+    if (next) this.selectedCodeAlgo.set(null);
   }
 
   toggleAlgo(algo: string): void {
     if (this.isRunning()) return;
     const current = this.selectedAlgos();
-    const next = current.includes(algo)
-      ? current.filter(a => a !== algo)
-      : [...current, algo];
-    if (next.length === 0) return;
-
+    let next: string[];
+    if (this.comparisonMode()) {
+      next = current.includes(algo) ? current.filter(a => a !== algo) : [...current, algo];
+      if (next.length === 0) return;
+    } else {
+      if (current[0] === algo) return;
+      next = [algo];
+      this.selectedCodeAlgo.set(null);
+    }
     this.selectedAlgos.set(next);
-
-    // Recréer les instances avec les noms dans l'ordre sélectionné
-    this.instances.set(
-      next.map(name => ({
-        name,
-        comparisons: 0, swaps: 0,
-        done: false,
-        sortedIndices: new Set<number>()
-      }))
-    );
-
-    // Forcer la détection de changement puis re-attacher les canvas
-    this.cdr.detectChanges();
-    setTimeout(() => this.attachCanvases(), 0);
+    this.rebuildInstances(this.currentArray);
   }
 
-  generateArray(): void {
-    this.currentArray = Array.from(
-      { length: this.arraySize() },
-      () => Math.floor(Math.random() * 300) + 10
-    );
+  toggleSidebar(): void    { this.sidebarOpen.update(v => !v); }
+  toggleRunDropdown(): void { this.showRunDropdown.update(v => !v); }
 
-    this.instances.update(list =>
-      list.map(i => ({
-        ...i,
-        comparisons: 0,
-        swaps: 0,
-        done: false,
-        sortedIndices: new Set<number>(),
-        lastSnapshot: undefined,   // ← reset
-      }))
-    );
+  // ── Code panel ────────────────────────────────────────────────────────────
 
-    this.drawAll();
+  toggleCodePanel(algoName: string): void {
+    this.selectedCodeAlgo.set(this.selectedCodeAlgo() === algoName ? null : algoName);
   }
 
-  onArraySizeChange(value: number): void {
-    this.arraySize.set(value);
+  selectLanguage(lang: CodeLanguage): void { this.selectedLanguage.set(lang); }
+
+  selectDataType(type: DataType): void {
+    this.selectedDataType.set(type);
     this.generateArray();
   }
 
-  onSpeedChange(value: number): void {
-    this.speedMs.set(value);
+  highlightLine(line: string): SafeHtml {
+    if (!line.trim()) return this.sanitizer.bypassSecurityTrustHtml('&nbsp;');
+    const e = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const h = e
+      .replace(/(["'`][^"'`]*["'`])/g, '<span class="hl-string">$1</span>')
+      .replace(/\b(void|bool|boolean|return|if|else|for|while|break|true|false|null|new|class|function|def|let|const|var|static|public|private|import|from|int|float|double|long)\b/g,
+        '<span class="hl-keyword">$1</span>')
+      .replace(/\b(Arrays|Math|count|len|range|intdiv|vector|swap|print|console)\b/g,
+        '<span class="hl-builtin">$1</span>')
+      .replace(/\b(\d+\.?\d*)\b/g, '<span class="hl-number">$1</span>')
+      .replace(/(\/\/.*$)/g, '<span class="hl-comment">$1</span>')
+      .replace(/(#.*$)/g, '<span class="hl-comment">$1</span>')
+      .replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, '<span class="hl-fn">$1</span>');
+    return this.sanitizer.bypassSecurityTrustHtml(h);
   }
+
+  // ── Controls ──────────────────────────────────────────────────────────────
 
   start(): void {
     if (this.isRunning()) return;
+    this.showRunDropdown.set(false);
     this.isPaused.set(false);
     this.isRunning.set(true);
-
-    this.instances.update(list =>
-      list.map(inst => ({
-        ...inst,
-        comparisons: 0, swaps: 0,
-        done: false,
-        sortedIndices: new Set<number>()
-      }))
-    );
-
-    this.instances().forEach(inst => {
-      if (inst.canvas && inst.ctx) this.runAlgo(inst as Required<AlgoInstance>);
-    });
+    this.outputNumbers.set([]);
+    this.rebuildInstances(this.currentArray);
+    // Envoyer la vitesse au backend avant de démarrer
+    if (this.comparisonMode()) this.startComparison();
+    else                       this.startSolo();
   }
 
   togglePause(): void {
     this.isPaused.update(v => !v);
+    if (!this.isPaused()) {
+      if (this.comparisonMode()) this.drainSyncLoop();
+      // Solo : le pauseWatch interval dans startSolo s'en charge
+    }
   }
 
-  private runAlgo(inst: Required<AlgoInstance>): void {
-    const sessionId = crypto.randomUUID();
-    const algoName = inst.name;
+  nextStep(): void {
+    if (!this.isPaused()) return;
+    if (this.comparisonMode()) {
+      const active = this.algoQueues.filter(aq => !aq.done);
+      if (!active.every(aq => aq.queue.length > 0)) return;
+      active.forEach(aq => {
+        const step = aq.queue.shift()!;
+        if (step.type === 'DONE') aq.done = true;
+        this.applyStep(aq.name, step);
+      });
+    } else {
+      this.stepTrigger$.next();
+    }
+  }
 
-    inst.sub = this.ws
-      .subscribe<SortStep>(`/topic/session.${sessionId}`)
-      .pipe(
-        concatMap(step => {
-          const waitIfPaused = (): Observable<SortStep> =>
-            this.isPaused()
-              ? timer(100).pipe(concatMap(() => waitIfPaused()))
-              : of(step);
+  // ── Execute (instantané) ──────────────────────────────────────────────────
 
-          const delay = this.speedMs();
-          const base$ = delay <= 16 ? of(step) : timer(delay).pipe(concatMap(() => of(step)));
-          return base$.pipe(concatMap(() => waitIfPaused()));
-        })
-      )
-      .subscribe(step => {
-        this.instances.update(list =>
-          list.map(i => {
-            if (i.name !== algoName) return i;
-            const updated = { ...i };
-            if (step.type === 'COMPARE') updated.comparisons++;
-            if (step.type === 'SWAP')    updated.swaps++;
-            if (step.type === 'SORTED') {
-              updated.sortedIndices = new Set([...i.sortedIndices, step.indexA]);
-            }
-            if (step.type === 'DONE') {
-              updated.done = true;
-              updated.sortedIndices = new Set(
-                Array.from({ length: this.arraySize() }, (_, k) => k)
-              );
-            }
-            updated.lastSnapshot = step.stateSnapshot; // ← ajouter
-            return updated;
-          })
-        );
+  execute(): void {
+    if (this.isRunning()) return;
+    this.showRunDropdown.set(false);
+    this.outputNumbers.set([]);
+    this.rebuildInstances(this.currentArray);
+    this.isRunning.set(true);
 
-        const current = this.instances().find(i => i.name === algoName);
-        if (current?.canvas && current?.ctx) {
-          this.drawArray(current as Required<AlgoInstance>, step.stateSnapshot, step.indexA, step.indexB, step.type);
-        }
+    const algos = this.instances();
+    let doneCount = 0;
 
-        if (step.type === 'DONE' && this.allDone()) {
-          this.isRunning.set(false);
+    algos.forEach(inst => {
+      const sessionId = crypto.randomUUID();
+      this.ws.subscribe<ExecuteResult>(`/topic/execute.${sessionId}`)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(result => {
+          this.instances.update(list =>
+            list.map(i => {
+              if (i.name !== inst.name) return i;
+              return {
+                ...i,
+                bars: result.sortedArray.map(v => ({ value: v, state: 'sorted' as const })),
+                comparisons:  result.comparisons,
+                swaps:        result.swaps,
+                pivots:       result.pivots,
+                sortedCount:  result.sortedArray.length,
+                done:         true,
+                sortedIndices: new Set(result.sortedArray.map((_, k) => k)),
+              };
+            })
+          );
+          this.outputNumbers.set(result.sortedArray);
+          doneCount++;
+          if (doneCount === algos.length) this.isRunning.set(false);
+        });
+      this.ws.send('/app/session.execute', { algo: inst.name, array: this.currentArray, sessionId });
+    });
+  }
+
+  // ── Solo ──────────────────────────────────────────────────────────────────
+
+  private startSolo(): void {
+    const inst        = this.instances()[0];
+    const sessionId   = crypto.randomUUID();
+    const buffer: SortStep[] = [];
+    let   processing  = false;
+    const cancelStep$ = new Subject<void>();
+
+    const processNext = () => {
+      if (processing || buffer.length === 0 || this.isPaused()) return;
+      processing = true;
+      const step  = buffer.shift()!;
+      const delay = this.speedMs();
+      const d$: Observable<null | number> = delay <= 1 ? of(null) : timer(delay);
+
+      d$.pipe(
+        takeUntil(cancelStep$),
+        takeUntil(this.destroy$)
+      ).subscribe({
+        next: () => {
+          this.applyStep(inst.name, step);
+          processing = false;
+          processNext();
+        },
+        // Si annulé (pause), remettre le step dans le buffer
+        complete: () => {
+          if (processing) {
+            buffer.unshift(step);
+            processing = false;
+          }
         }
       });
+    };
 
-    this.ws.send('/app/session.start', {
-      algo: inst.name,
-      array: this.currentArray,
-      sessionId
-    });
-  }
-
-  private drawArray(
-    inst: Required<AlgoInstance>,
-    arr: number[],
-    indexA: number,
-    indexB: number,
-    type: string
-  ): void {
-    const { canvas, ctx, sortedIndices } = inst;
-    const w = canvas.width;
-    const h = canvas.height;
-    if (!w || !h || !arr.length) return;
-
-    ctx.clearRect(0, 0, w, h);
-    const barWidth = w / arr.length;
-
-    arr.forEach((val, i) => {
-      let color: string;
-      if (sortedIndices.has(i)) {
-        color = '#e8ff00';
-      } else if (i === indexA || i === indexB) {
-        color = type === 'SWAP'  ? '#D85A30'
-              : type === 'PIVOT' ? '#BA7517'
-              : '#1D9E75';
-      } else {
-        color = 'rgba(108, 99, 212, 0.8)';
+    // Quand on pause : annuler le timer en cours
+    const pauseWatch = setInterval(() => {
+      if (!this.isRunning()) { clearInterval(pauseWatch); cancelStep$.complete(); return; }
+      if (this.isPaused() && processing) {
+        cancelStep$.next(); // annule le timer
       }
+      if (!this.isPaused()) processNext(); // relance si on reprend
+    }, 20);
 
-      ctx.fillStyle = color;
-      ctx.fillRect(
-        i * barWidth + 0.5,
-        h - (val / 310) * h,
-        Math.max(barWidth - 1, 1),
-        (val / 310) * h
-      );
+    // Étape manuelle
+    this.stepTrigger$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (!this.isPaused() || buffer.length === 0) return;
+      const step = buffer.shift()!;
+      this.applyStep(inst.name, step);
+    });
+
+    this.ws.subscribe<SortStep>(`/topic/session.${sessionId}`)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(step => { buffer.push(step); processNext(); });
+
+    this.ws.send('/app/session.start', { algo: inst.name, array: this.currentArray, sessionId });
+    this.ws.send('/app/session.speed', { sessionId, speedMs: this.speedMs() });
+  }
+
+  // ── Comparison ────────────────────────────────────────────────────────────
+
+  private startComparison(): void {
+    const algos = this.instances();
+    this.algoQueues = algos.map(inst => ({ name: inst.name, queue: [], done: false }));
+
+    algos.forEach((inst, idx) => {
+      const sessionId = crypto.randomUUID();
+      const aq        = this.algoQueues[idx];
+      aq.sub = this.ws.subscribe<SortStep>(`/topic/session.${sessionId}`)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(step => {
+          aq.queue.push(step);
+          if (!this.syncLoopActive && !this.isPaused()) this.drainSyncLoop();
+        });
+      this.ws.send('/app/session.start', { algo: inst.name, array: this.currentArray, sessionId });
+      this.ws.send('/app/session.speed', { sessionId, speedMs: this.speedMs() });
     });
   }
 
-  ngOnDestroy(): void {
-    this.instances().forEach(inst => inst.sub?.unsubscribe());
-    this.ro?.disconnect();
-    this.ws.disconnect();
+  private drainSyncLoop(): void {
+    if (this.syncLoopActive || this.isPaused() || !this.isRunning()) return;
+    const active = this.algoQueues.filter(aq => !aq.done);
+    if (active.length === 0) return;
+    if (!active.every(aq => aq.queue.length > 0)) return; // attendre que tout le monde ait un step
+
+    this.syncLoopActive = true;
+    const steps = active.map(aq => ({ name: aq.name, step: aq.queue.shift()! }));
+    steps.forEach(({ name, step }) => {
+      if (step.type === 'DONE') { const aq = this.algoQueues.find(q => q.name === name); if (aq) aq.done = true; }
+      this.applyStep(name, step);
+    });
+
+    this.syncLoopActive = false;
+    // Continuer sans délai si 1ms — sinon respecter le délai
+    const delay = this.speedMs();
+    if (delay <= 1) {
+      // Micro-tâche pour ne pas bloquer le rendu
+      Promise.resolve().then(() => this.drainSyncLoop());
+    } else {
+      timer(delay).pipe(takeUntil(this.destroy$)).subscribe(() => this.drainSyncLoop());
+    }
+  }
+
+  // ── Apply step ────────────────────────────────────────────────────────────
+
+  private applyStep(algoName: string, step: SortStep): void {
+    this.instances.update(list =>
+      list.map(i => {
+        if (i.name !== algoName) return i;
+        const sortedIndices = new Set(i.sortedIndices);
+        let { comparisons, swaps, pivots, sortedCount } = i;
+
+        if (step.type === 'COMPARE') comparisons++;
+        if (step.type === 'SWAP')    swaps++;
+        if (step.type === 'PIVOT')   pivots++;
+        if (step.type === 'SORTED') {
+          sortedIndices.add(step.indexA);
+          sortedCount = sortedIndices.size;
+        }
+        if (step.type === 'DONE') {
+          sortedIndices.clear();
+          step.stateSnapshot.forEach((_, k) => sortedIndices.add(k));
+          sortedCount = step.stateSnapshot.length;
+        }
+
+        // Calculer les bars APRÈS avoir mis à jour sortedIndices
+        const bars = step.stateSnapshot.map((v, idx) => ({
+          value: v,
+          state: this.barStateForIndex(idx, step, sortedIndices)
+        }));
+
+        return {
+          ...i,
+          bars,
+          comparisons, swaps, pivots, sortedCount,
+          done: step.type === 'DONE',
+          sortedIndices,
+        };
+      })
+    );
+
+    if (step.type === 'DONE') {
+      this.outputNumbers.set([...step.stateSnapshot]);
+      if (this.allDone()) { this.isRunning.set(false); this.isPaused.set(false); }
+    }
+  }
+
+  private barStateForIndex(idx: number, step: SortStep, sortedIndices: Set<number>): Bar['state'] {
+    if (step.type === 'DONE') return 'sorted';
+    if (sortedIndices.has(idx)) return 'sorted';
+    if (idx === step.indexA || idx === step.indexB) {
+      if (step.type === 'SWAP')  return 'swap';
+      if (step.type === 'PIVOT') return 'pivot';
+      return 'compare';
+    }
+    return 'default';
   }
 }
