@@ -88,6 +88,8 @@ export class SortingComponent implements OnInit, OnDestroy {
   userInputRaw     = signal('');
   outputNumbers    = signal<number[]>([]);
 
+  viewMode = signal<'bars' | 'numbers'>('bars');
+
   manualInput  = signal(false);  // toggle entrée manuelle
   minValue     = signal(0);
   maxValue    = signal(100);
@@ -164,6 +166,18 @@ export class SortingComponent implements OnInit, OnDestroy {
   toggleManualInput(): void            { this.manualInput.update(v => !v); this.generateArray(); }
   incrementMin(delta: number): void    { this.minValue.update(v => v + delta); this.generateArray(); }
   incrementMax(delta: number): void    { this.maxValue.update(v => v + delta); this.generateArray(); }
+
+  // Méthode toggle
+  toggleViewMode(): void { this.viewMode.update(v => v === 'bars' ? 'numbers' : 'bars'); }
+
+  // Computed pour formater un nombre selon le type
+  formatValue(v: number): string {
+    const type = this.selectedDataType();
+    if (type === 'float')  return v.toFixed(2);
+    if (type === 'double') return v.toFixed(4);
+    if (type === 'long')   return v.toString() + 'L';
+    return Math.round(v).toString();
+  }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 

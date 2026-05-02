@@ -93,6 +93,11 @@
   &:nth-child(2), &:nth-child(3), &:nth-child(5) {
     padding-bottom: 4px;
   }
+
+  &:nth-child(6) {
+    padding-bottom: 4px;
+    font-size: 14px;
+  }
 }
 
 .action-btn-primary {
@@ -1098,3 +1103,72 @@
 :host ::ng-deep .hl-comment { color: #546e7a; font-style: italic; }
 :host ::ng-deep .hl-builtin { color: #82aaff; }
 :host ::ng-deep .hl-fn      { color: #82aaff; }
+
+
+/* ── Vue nombres ── */
+.numbers-area {
+  position: absolute;
+  inset: 36px 0 0 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+.number-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(108, 99, 212, 0.15);
+  color: rgba(108, 99, 212, 0.9);
+  border: 1px solid rgba(108, 99, 212, 0.25);
+  transition: background 0.05s, color 0.05s, border-color 0.05s;
+  white-space: nowrap;
+  min-width: 32px;
+
+  &.state-compare {
+    background: rgba(29, 158, 117, 0.2);
+    color: #1D9E75;
+    border-color: rgba(29, 158, 117, 0.4);
+  }
+
+  &.state-swap {
+    background: rgba(216, 90, 48, 0.2);
+    color: #D85A30;
+    border-color: rgba(216, 90, 48, 0.4);
+  }
+
+  &.state-pivot {
+    background: rgba(186, 117, 23, 0.2);
+    color: #BA7517;
+    border-color: rgba(186, 117, 23, 0.4);
+  }
+
+  &.state-sorted {
+    background: rgba(232, 255, 0, 0.1);
+    color: var(--accent);
+    border-color: rgba(232, 255, 0, 0.3);
+  }
+}
+
+/* ── Bouton vue ── */
+.action-btn-view {
+  font-size: 18px;
+  font-weight: 700;
+
+  &.active {
+    color: var(--accent);
+    border-color: rgba(232, 255, 0, 0.3);
+    background: rgba(232, 255, 0, 0.08);
+  }
+}
