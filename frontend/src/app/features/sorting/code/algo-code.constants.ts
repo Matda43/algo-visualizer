@@ -1,3 +1,27 @@
+export interface AlgoDescription {
+  summary: string;
+  wikipediaUrl: string;
+}
+
+export const ALGO_DESCRIPTIONS: Record<string, AlgoDescription> = {
+  'Bubble Sort': {
+    summary: 'Algorithme de tri simple qui parcourt répétitivement la liste, compare les éléments adjacents et les échange s\'ils sont dans le mauvais ordre. Très inefficace sur de grandes listes mais simple à comprendre et implémenter.',
+    wikipediaUrl: 'https://fr.wikipedia.org/wiki/Tri_%C3%A0_bulles',
+  },
+  'Quick Sort': {
+    summary: 'Algorithme de tri par division : choisit un pivot, partitionne le tableau en deux sous-tableaux (éléments ≤ pivot et éléments > pivot), puis trie récursivement chaque partie. Très efficace en pratique malgré un pire cas en O(n²).',
+    wikipediaUrl: 'https://fr.wikipedia.org/wiki/Tri_rapide',
+  },
+  'Merge Sort': {
+    summary: 'Algorithme de tri par fusion basé sur le paradigme diviser pour régner. Divise le tableau en deux moitiés, les trie récursivement, puis les fusionne. Garantit O(n log n) dans tous les cas au prix d\'une mémoire supplémentaire.',
+    wikipediaUrl: 'https://fr.wikipedia.org/wiki/Tri_fusion',
+  },
+  'Heap Sort': {
+    summary: 'Algorithme de tri utilisant une structure de tas (heap) binaire. Construit d\'abord un tas max, puis extrait répétitivement le maximum pour construire le tableau trié. Combine O(n log n) garanti et tri en place.',
+    wikipediaUrl: 'https://fr.wikipedia.org/wiki/Tri_par_tas',
+  },
+};
+
 export type CodeLanguage = 'C++' | 'C' | 'Java' | 'Python' | 'C#' | 'JavaScript' | 'PHP';
 
 export const CODE_LANGUAGES: CodeLanguage[] = ['C++', 'C', 'Java', 'Python', 'C#', 'JavaScript', 'PHP'];
@@ -18,131 +42,140 @@ export const ALGO_COMPLEXITY: Record<string, AlgoComplexity> = {
 
 export const ALGO_CODE: Record<string, Record<string, string>> = {
   'Bubble Sort': {
-    'C++': `void bubbleSort(int arr[], int n) {
-  for (int i = 0; i < n - 1; i++) {
-    bool swapped = false;
-    for (int j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        swap(arr[j], arr[j + 1]);
-        swapped = true;
+    'C++': 
+    `void bubbleSort(int arr[], int n) {
+      for (int i = 0; i < n - 1; i++) {
+        bool swapped = false;
+        for (int j = 0; j < n - i - 1; j++) {
+          if (arr[j] > arr[j + 1]) {
+            swap(arr[j], arr[j + 1]);
+            swapped = true;
+          }
+        }
+        if (!swapped) break;
       }
-    }
-    if (!swapped) break;
-  }
-}`,
-    'C': `void bubbleSort(int arr[], int n) {
-  for (int i = 0; i < n - 1; i++) {
-    int swapped = 0;
-    for (int j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        int tmp = arr[j];
-        arr[j] = arr[j + 1];
-        arr[j + 1] = tmp;
-        swapped = 1;
+    }`,
+    'C': 
+    `void bubbleSort(int arr[], int n) {
+      for (int i = 0; i < n - 1; i++) {
+        int swapped = 0;
+        for (int j = 0; j < n - i - 1; j++) {
+          if (arr[j] > arr[j + 1]) {
+            int tmp = arr[j];
+            arr[j] = arr[j + 1];
+            arr[j + 1] = tmp;
+            swapped = 1;
+          }
+        }
+        if (!swapped) break;
       }
-    }
-    if (!swapped) break;
-  }
-}`,
-    'Java': `void bubbleSort(int[] arr) {
-  int n = arr.length;
-  for (int i = 0; i < n - 1; i++) {
-    boolean swapped = false;
-    for (int j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        int tmp = arr[j];
-        arr[j] = arr[j + 1];
-        arr[j + 1] = tmp;
-        swapped = true;
+    }`,
+    'Java': 
+    `void bubbleSort(int[] arr) {
+      int n = arr.length;
+      for (int i = 0; i < n - 1; i++) {
+        boolean swapped = false;
+        for (int j = 0; j < n - i - 1; j++) {
+          if (arr[j] > arr[j + 1]) {
+            int tmp = arr[j];
+            arr[j] = arr[j + 1];
+            arr[j + 1] = tmp;
+            swapped = true;
+          }
+        }
+        if (!swapped) break;
       }
-    }
-    if (!swapped) break;
-  }
-}`,
-    'Python': `def bubble_sort(arr):
-  n = len(arr)
-  for i in range(n - 1):
-    swapped = False
-    for j in range(n - i - 1):
-      if arr[j] > arr[j + 1]:
-        arr[j], arr[j + 1] = arr[j + 1], arr[j]
-        swapped = True
-    if not swapped:
-      break`,
-    'C#': `void BubbleSort(int[] arr) {
-  int n = arr.Length;
-  for (int i = 0; i < n - 1; i++) {
-    bool swapped = false;
-    for (int j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
-        swapped = true;
+    }`,
+    'Python': 
+    `def bubble_sort(arr):
+      n = len(arr)
+      for i in range(n - 1):
+        swapped = False
+        for j in range(n - i - 1):
+          if arr[j] > arr[j + 1]:
+            arr[j], arr[j + 1] = arr[j + 1], arr[j]
+            swapped = True
+        if not swapped:
+          break`,
+    'C#': 
+    `void BubbleSort(int[] arr) {
+      int n = arr.Length;
+      for (int i = 0; i < n - 1; i++) {
+        bool swapped = false;
+        for (int j = 0; j < n - i - 1; j++) {
+          if (arr[j] > arr[j + 1]) {
+            (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
+            swapped = true;
+          }
+        }
+        if (!swapped) break;
       }
-    }
-    if (!swapped) break;
-  }
-}`,
-    'JavaScript': `function bubbleSort(arr) {
-  const n = arr.length;
-  for (let i = 0; i < n - 1; i++) {
-    let swapped = false;
-    for (let j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-        swapped = true;
+    }`,
+    'JavaScript': 
+    `function bubbleSort(arr) {
+      const n = arr.length;
+      for (let i = 0; i < n - 1; i++) {
+        let swapped = false;
+        for (let j = 0; j < n - i - 1; j++) {
+          if (arr[j] > arr[j + 1]) {
+            [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+            swapped = true;
+          }
+        }
+        if (!swapped) break;
       }
-    }
-    if (!swapped) break;
-  }
-  return arr;
-}`,
-    'PHP': `function bubbleSort(array &$arr): void {
-  $n = count($arr);
-  for ($i = 0; $i < $n - 1; $i++) {
-    $swapped = false;
-    for ($j = 0; $j < $n - $i - 1; $j++) {
-      if ($arr[$j] > $arr[$j + 1]) {
-        [$arr[$j], $arr[$j + 1]] = [$arr[$j + 1], $arr[$j]];
-        $swapped = true;
+      return arr;
+    }`,
+    'PHP': 
+    `function bubbleSort(array &$arr): void {
+      $n = count($arr);
+      for ($i = 0; $i < $n - 1; $i++) {
+        $swapped = false;
+        for ($j = 0; $j < $n - $i - 1; $j++) {
+          if ($arr[$j] > $arr[$j + 1]) {
+            [$arr[$j], $arr[$j + 1]] = [$arr[$j + 1], $arr[$j]];
+            $swapped = true;
+          }
+        }
+        if (!$swapped) break;
       }
-    }
-    if (!$swapped) break;
-  }
-}`,
+    }`,
   },
-
   'Quick Sort': {
-    'C++': `int partition(int arr[], int low, int high) {
-  int pivot = arr[high], i = low - 1;
-  for (int j = low; j < high; j++)
-    if (arr[j] <= pivot) swap(arr[++i], arr[j]);
-  swap(arr[i + 1], arr[high]);
-  return i + 1;
-}
-void quickSort(int arr[], int low, int high) {
-  if (low < high) {
-    int pi = partition(arr, low, high);
-    quickSort(arr, low, pi - 1);
-    quickSort(arr, pi + 1, high);
-  }
-}`,
-    'C': `int partition(int arr[], int low, int high) {
-  int pivot = arr[high], i = low - 1, tmp;
-  for (int j = low; j < high; j++) {
-    if (arr[j] <= pivot) {
-      tmp = arr[++i]; arr[i] = arr[j]; arr[j] = tmp;
+    'C++': 
+    `int partition(int arr[], int low, int high) {
+      int pivot = arr[high], i = low - 1;
+      for (int j = low; j < high; j++)
+        if (arr[j] <= pivot) 
+          swap(arr[++i], arr[j]);
+      swap(arr[i + 1], arr[high]);
+      return i + 1;
     }
-  }
-  tmp = arr[i+1]; arr[i+1] = arr[high]; arr[high] = tmp;
-  return i + 1;
-}
-void quickSort(int arr[], int low, int high) {
-  if (low < high) {
-    int pi = partition(arr, low, high);
-    quickSort(arr, low, pi - 1);
-    quickSort(arr, pi + 1, high);
-  }
-}`,
+    void quickSort(int arr[], int low, int high) {
+      if (low < high) {
+        int pi = partition(arr, low, high);
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+      }
+    }`,
+    'C': 
+    `int partition(int arr[], int low, int high) {
+      int pivot = arr[high], i = low - 1, tmp;
+      for (int j = low; j < high; j++) {
+        if (arr[j] <= pivot) {
+          tmp = arr[++i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+      }
+      tmp = arr[i+1]; arr[i+1] = arr[high]; arr[high] = tmp;
+      return i + 1;
+    }
+    void quickSort(int arr[], int low, int high) {
+      if (low < high) {
+        int pi = partition(arr, low, high);
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+      }
+    }`,
     'Java': `int partition(int[] arr, int low, int high) {
   int pivot = arr[high], i = low - 1;
   for (int j = low; j < high; j++) {

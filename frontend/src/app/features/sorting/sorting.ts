@@ -6,7 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { Subject, Subscription, timer, of, Observable, takeUntil } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { WebsocketService } from '../../core/websocket';
-import { ALGO_CODE, CODE_LANGUAGES, CodeLanguage, ALGO_COMPLEXITY } from './code/algo-code.constants';
+import { ALGO_CODE, CODE_LANGUAGES, CodeLanguage, ALGO_COMPLEXITY, ALGO_DESCRIPTIONS } from './code/algo-code.constants';
 import { DecimalPipe } from '@angular/common';
 
 interface SortStep {
@@ -62,28 +62,35 @@ export class SortingComponent implements OnInit, OnDestroy {
   private cdr       = inject(ChangeDetectorRef);
   private sanitizer = inject(DomSanitizer);
 
-  readonly ALL_ALGOS      = ['Bubble Sort', 'Quick Sort', 'Merge Sort', 'Heap Sort'];
+  readonly ALL_ALGOS      = ['Merge Sort', 'Quick Sort', 'Heap Sort', 'Bubble Sort'];
   readonly CODE_LANGUAGES = CODE_LANGUAGES;
   readonly DATA_TYPES     = DATA_TYPES;
+  readonly ALGO_DESCRIPTIONS = ALGO_DESCRIPTIONS;
 
   comparisonMode   = signal(false);
   isPaused         = signal(false);
   isRunning        = signal(false);
   sidebarOpen      = signal(true);
   showRunDropdown  = signal(false);
+  showInput  = signal(false);
+  showOutput = signal(false);
 
-  selectedAlgos    = signal<string[]>(['Bubble Sort']);
+  selectedAlgos    = signal<string[]>(['Merge Sort']);
   arraySize        = signal(50);
   speedMs          = signal(1);
   selectedDataType = signal<DataType>('int');
 
-  instances        = signal<AlgoInstance[]>([this.makeInstance('Bubble Sort', [])]);
+  instances        = signal<AlgoInstance[]>([this.makeInstance('Merge Sort', [])]);
 
   selectedCodeAlgo = signal<string | null>(null);
   selectedLanguage = signal<CodeLanguage>('Java');
 
   userInputRaw     = signal('');
   outputNumbers    = signal<number[]>([]);
+
+  manualInput  = signal(false);  // toggle entrée manuelle
+  minValue     = signal(0);
+  maxValue    = signal(100);
 
   private stepTrigger$ = new Subject<void>();
   private destroy$     = new Subject<void>();
@@ -113,11 +120,50 @@ export class SortingComponent implements OnInit, OnDestroy {
     return nums.length > 0 ? nums : null;
   });
 
-  maxValue = computed(() => {
+  maxAbsValue = computed(() => {
     const inst = this.instances()[0];
     if (!inst?.bars.length) return 310;
-    return Math.max(...inst.bars.map(b => b.value), 1);
+    const vals = inst.bars.map(b => b.value);
+    return Math.max(...vals.map(Math.abs), 1);
   });
+
+  hasNegativeValues = computed(() => {
+    const inst = this.instances()[0];
+    if (!inst?.bars.length) return false;
+    return inst.bars.some(b => b.value < 0);
+  });
+
+  // Ticks Y adaptés aux valeurs négatives
+  yTicks = computed((): { value: number; pct: number }[] => {
+    const inst = this.instances()[0];
+    if (!inst?.bars.length) return [];
+    const vals   = inst.bars.map(b => b.value);
+    const minVal = Math.min(...vals);
+    const maxVal = Math.max(...vals, 1);
+    const total  = maxVal - minVal;
+    if (total === 0) return [];
+
+    const tickCount = 5;
+    const step = total / tickCount;
+    return Array.from({ length: tickCount + 1 }, (_, i) => {
+      const value = minVal + step * i;
+      const pct   = ((value - minVal) / total) * 100;
+      return { value: parseFloat(value.toFixed(1)), pct };
+    });
+  });
+
+  description = computed(() => {
+    const algo = this.selectedCodeAlgo();
+    if (!algo) return null;
+    return ALGO_DESCRIPTIONS[algo] ?? null;
+  });
+
+  // Helpers
+  onMinValueChange(v: number): void    { this.minValue.set(v); this.generateArray(); }
+  onMaxValueChange(v: number): void    { this.maxValue.set(v); this.generateArray(); }
+  toggleManualInput(): void            { this.manualInput.update(v => !v); this.generateArray(); }
+  incrementMin(delta: number): void    { this.minValue.update(v => v + delta); this.generateArray(); }
+  incrementMax(delta: number): void    { this.maxValue.update(v => v + delta); this.generateArray(); }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -146,9 +192,22 @@ export class SortingComponent implements OnInit, OnDestroy {
     return this.arraySize() - inst.sortedIndices.size;
   }
 
-  barHeightPercent(val: number): number {
-    return (val / this.maxValue()) * 100;
+  barLayout(val: number): { height: number; bottom: number } {
+    const maxAbs  = this.maxAbsValue();
+    const hasNeg  = this.hasNegativeValues();
+    const minVal  = hasNeg ? Math.min(...this.instances()[0].bars.map(b => b.value)) : 0;
+    const maxVal  = Math.max(...this.instances()[0].bars.map(b => b.value), 1);
+    const total   = maxVal - minVal;
+
+    if (total === 0) return { height: 0, bottom: 50 };
+
+    const zeroPct    = hasNeg ? (-minVal / total) * 100 : 0;
+    const heightPct  = (Math.abs(val) / total) * 100;
+    const bottomPct  = val >= 0 ? zeroPct : zeroPct - heightPct;
+
+    return { height: heightPct, bottom: bottomPct };
   }
+
 
   private applyDataType(code: string, type: DataType): string {
     if (type === 'int') return code;
@@ -177,17 +236,26 @@ export class SortingComponent implements OnInit, OnDestroy {
   generateArray(): void {
     const parsed = this.parsedInput();
     let arr: number[];
-    if (parsed) {
+
+    if (this.manualInput() && parsed) {
       arr = parsed.map(v => this.normalizeValue(v));
       this.arraySize.set(arr.length);
-    } else {
+    } else if (!this.manualInput()) {
       const type = this.selectedDataType();
+      const min  = this.minValue();
+      const max  = this.maxValue();
+      const range = max - min;
       arr = Array.from({ length: this.arraySize() }, () => {
-        if (type === 'float')  return parseFloat((Math.random() * 100 + 1).toFixed(2));
-        if (type === 'double') return parseFloat((Math.random() * 100 + 1).toFixed(4));
-        return Math.floor(Math.random() * 100) + 1;
+        const raw = Math.random() * range + min;
+        if (type === 'float')  return parseFloat(raw.toFixed(2));
+        if (type === 'double') return parseFloat(raw.toFixed(4));
+        return Math.trunc(raw);
       });
+    } else {
+      // Manuel activé mais pas de valeurs saisies : tableau vide
+      arr = [];
     }
+
     this.currentArray = arr;
     this.initialArray = [...arr];
     this.outputNumbers.set([]);

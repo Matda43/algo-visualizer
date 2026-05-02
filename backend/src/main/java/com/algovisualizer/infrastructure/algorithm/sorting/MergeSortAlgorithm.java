@@ -22,10 +22,23 @@ public class MergeSortAlgorithm implements SortingAlgorithm {
 
     private void mergeSort(int[] arr, int left, int right, List<SortStep> steps) {
         if (left < right) {
-            int mid = (left + right) / 2;
+            int mid = left + (right - left) / 2;
             mergeSort(arr, left, mid, steps);
             mergeSort(arr, mid + 1, right, steps);
+
+            // Optimisation : déjà trié, pas besoin de merger
+            steps.add(new SortStep(StepType.COMPARE, mid, mid + 1, arr.clone()));
+            if (arr[mid] <= arr[mid + 1]) {
+                // Les deux moitiés sont déjà dans l'ordre
+                for (int k = left; k <= right; k++) {
+                    steps.add(new SortStep(StepType.SORTED, k, k, arr.clone()));
+                }
+                return;
+            }
+
             merge(arr, left, mid, right, steps);
+        } else if (left == right) {
+            steps.add(new SortStep(StepType.SORTED, left, left, arr.clone()));
         }
     }
 
@@ -45,6 +58,7 @@ public class MergeSortAlgorithm implements SortingAlgorithm {
         while (i <= mid) arr[k++] = tmp[i++];
         while (j <= right) arr[k++] = tmp[j++];
 
+        // Marquer la zone mergée comme triée uniquement si c'est le merge final
         if (left == 0 && right == arr.length - 1) {
             for (int idx = 0; idx < arr.length; idx++) {
                 steps.add(new SortStep(StepType.SORTED, idx, idx, arr.clone()));
