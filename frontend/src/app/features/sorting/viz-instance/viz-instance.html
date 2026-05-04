@@ -1,0 +1,61 @@
+<div class="viz-wrapper">
+  <div class="stats-bar">
+    <span class="stat-algo">{{ instance().name }}</span>
+    <div class="stat-divider"></div>
+    <div class="stat-row">
+      <div class="stat">
+        <span class="stat-value color-compare">{{ instance().comparisons }}</span>
+        <span class="stat-label">Comp.</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value color-swap">{{ instance().swaps }}</span>
+        <span class="stat-label">Éch.</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value color-pivot">{{ instance().pivots }}</span>
+        <span class="stat-label">Pivots</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value color-sorted">{{ instance().sortedCount }}</span>
+        <span class="stat-label">Triés</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value color-unsorted">{{ unsortedCount() }}</span>
+        <span class="stat-label">Non triés</span>
+      </div>
+    </div>
+  </div>
+
+  @if (viewMode() === 'bars') {
+    <div class="bars-area">
+      <div class="y-axis">
+        @for (tick of yTicks(); track tick.pct) {
+          <div class="y-tick" [style.bottom.%]="tick.pct">
+            <span class="y-label">{{ tick.value | number:'1.0-1' }}</span>
+            <div class="y-line" [class.y-line-zero]="isZeroTick(tick.value)"></div>
+          </div>
+        }
+      </div>
+      <div class="bars-container">
+        @for (bar of instance().bars; track $index) {
+          <app-sorting-bar
+            [bar]="bar"
+            [height]="barLayout(bar.value).height"
+            [bottom]="barLayout(bar.value).bottom" />
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="numbers-area">
+      @for (bar of instance().bars; track $index) {
+        <app-number-cell [bar]="bar" [dataType]="dataType()" />
+      }
+    </div>
+  }
+
+  @if (instance().done) {
+    <div class="done-banner">
+      <span class="done-icon">✓</span> Terminé
+    </div>
+  }
+</div>

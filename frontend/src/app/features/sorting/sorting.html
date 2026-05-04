@@ -5,43 +5,43 @@
 
   <div class="layout">
 
-    <!-- Sidebar paramètres -->
+    <!-- ── Sidebar ── -->
     @if (sidebarOpen()) {
       <aside class="sidebar">
 
-        <div class="control-group">
-          <div class="control-label">Paramètres</div>
-          <div class="param-row">
-            <span class="param-label-text">Délai</span>
-            <span class="control-value">{{ speedMs() }}ms</span>
-          </div>
-          <input type="range" min="1" max="500" class="slider"
-                 [value]="speedMs()"
-                 (input)="onSpeedChange(+$any($event.target).value)">
-          <div class="slider-bounds"><span>Rapide</span><span>Lent</span></div>
+        <div class="sidebar-header">
+          <span class="sidebar-title">Paramètres</span>
+          <button class="btn btn-icon btn-close"
+                  (click)="toggleSidebar()" title="Fermer">✕</button>
+        </div>
+
+        <div class="mode-toggle">
+          <span class="mode-label">Mode Comparaison</span>
+          <button class="toggle-btn" [class.active]="comparisonMode()"
+                  [disabled]="isRunning()" (click)="toggleComparisonMode()">
+            <span class="toggle-thumb"></span>
+          </button>
         </div>
 
         <div class="control-group">
-          <div class="mode-toggle">
-            <div class="control-label">Algorithmes</div>
-            <button class="toggle-btn" [class.active]="comparisonMode()"
-                    [disabled]="isRunning()" (click)="toggleComparisonMode()">
-              <span class="toggle-thumb"></span>
-            </button>
-          </div>
+          <div class="control-label">Algorithmes</div>
           <div class="algo-list">
-            @for (algo of ALL_ALGOS; track algo) {
+            @for (algo of allAlgoNames(); track algo) {
               <div class="algo-row">
                 <button class="algo-btn"
                         [class.selected]="selectedAlgos().includes(algo)"
                         [disabled]="isRunning()"
                         (click)="toggleAlgo(algo)">
-                  <span class="algo-check">@if (selectedAlgos().includes(algo)) { ✓ }</span>
+                  <span class="algo-check">
+                    @if (selectedAlgos().includes(algo)) { ✓ }
+                  </span>
                   {{ algo }}
                 </button>
                 @if (!comparisonMode()) {
-                  <button class="info-btn" [class.active]="selectedCodeAlgo() === algo"
-                          (click)="toggleCodePanel(algo)">ⓘ</button>
+                  <button class="info-btn"
+                          [class.active]="selectedCodeAlgo() === algo"
+                          (click)="toggleCodePanel(algo)"
+                          title="Voir le code">ⓘ</button>
                 }
               </div>
             }
@@ -54,163 +54,192 @@
       </aside>
     }
 
-    <!-- Colonne boutons verticale -->
+    <!-- ── Colonne boutons verticale ── -->
     <div class="action-col">
       @if (sidebarOpen()) {
-        <button class="action-btn" (click)="toggleSidebar()" title="Fermer sidebar">✕</button>
+        <button class="action-btn" (click)="toggleSidebar()" title="Fermer">✕</button>
       } @else {
-        <button class="action-btn" (click)="toggleSidebar()" title="Ouvrir sidebar">☰</button>
+        <button class="action-btn" (click)="toggleSidebar()" title="Ouvrir">☰</button>
       }
 
-      <button class="action-btn" title="Randomize"
-              [disabled]="isRunning()" (click)="generateArray()">⟳</button>
-      <button class="action-btn" title="Réinitialiser"
-              [disabled]="isRunning()" (click)="reinitialize()">↺</button>
+      @if (!comparisonMode()) {
+        <!-- Run / Pause — solo uniquement -->
+        <button class="action-btn action-btn-primary"
+                (click)="isRunning() ? togglePause() : start()">
+          @if (isRunning() && !isPaused()) { ⏸ } @else { ▶ }
+        </button>
+      }
 
-      <!-- Run / Pause -->
-      <button class="action-btn action-btn-primary"
-              [disabled]="isRunning() && !isPaused()"
-              (click)="isRunning() ? togglePause() : start()">
-        @if (isRunning() && !isPaused()) { ⏸ }
-        @else if (isPaused()) { ▶ }
-        @else { ▶ }
-      </button>
-
-      <!-- Execute -->
+      <!-- Execute — toujours visible -->
       <button class="action-btn action-btn-execute"
-              [disabled]="isRunning()" (click)="execute()" title="Exécuter">
-        ⚡
-      </button>
+              [disabled]="isRunning()"
+              (click)="execute()"
+              title="Exécuter">⚡</button>
 
-      <button class="action-btn action-btn-view"
-              [class.active]="viewMode() === 'numbers'"
-              (click)="toggleViewMode()"
-              title="Changer l'affichage">
-        @if (viewMode() === 'bars') { ≡ } @else { ▮ }
-      </button>
-
-      @if (showNextStep()) {
-        <button class="action-btn action-btn-step" (click)="nextStep()" title="Étape suivante">⏭</button>
+      @if (!comparisonMode() && showNextStep()) {
+        <button class="action-btn action-btn-step"
+                (click)="nextStep()" title="Étape suivante">⏭</button>
       }
 
       <div class="action-col-spacer"></div>
 
+      @if (!comparisonMode()) {
+        <!-- Bouton P : paramètres (délai + vue) -->
+        <button class="action-btn action-btn-io"
+                [class.active]="showParams()"
+                (click)="showParams.update(v => !v)"
+                title="Paramètres">P</button>
+      }
+
       <!-- Input toggle -->
       <button class="action-btn action-btn-io"
               [class.active]="showInput()"
-              (click)="showInput.update(v => !v)" title="Entrée">
-        I
-      </button>
+              (click)="showInput.update(v => !v)"
+              title="Entrée">I</button>
 
       <!-- Output toggle -->
       <button class="action-btn action-btn-io"
               [class.active]="showOutput()"
-              (click)="showOutput.update(v => !v)" title="Sortie">
-        O
-      </button>
+              (click)="showOutput.update(v => !v)"
+              title="Sortie">O</button>
     </div>
 
-    <!-- Main -->
+    <!-- ── Main ── -->
     <main class="main">
 
-      <!-- Canvas -->
-      <div class="viz-grid"
-           [class.grid-1]="instances().length === 1"
-           [class.grid-2]="instances().length === 2"
-           [class.grid-3]="instances().length === 3"
-           [class.grid-4]="instances().length === 4">
+      @if (comparisonMode()) {
 
-        @for (inst of instances(); track inst.name) {
-          <div class="viz-wrapper">
-            <div class="stats-bar">
-              <span class="stat-algo">{{ inst.name }}</span>
-              <div class="stat-divider"></div>
-              <div class="stat-row">
-                <div class="stat">
-                  <span class="stat-value color-compare">{{ inst.comparisons }}</span>
-                  <span class="stat-label">Comp.</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value color-swap">{{ inst.swaps }}</span>
-                  <span class="stat-label">Éch.</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value color-pivot">{{ inst.pivots }}</span>
-                  <span class="stat-label">Pivots</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value color-sorted">{{ inst.sortedCount }}</span>
-                  <span class="stat-label">Triés</span>
-                </div>
-                <div class="stat">
-                  <span class="stat-value color-unsorted">{{ unsortedCount(inst) }}</span>
-                  <span class="stat-label">Non triés</span>
-                </div>
-              </div>
-            </div>
-
-            @if (viewMode() === 'bars') {
-              <!-- Vue barres existante -->
-              <div class="bars-area">
-                <div class="y-axis">
-                  @for (tick of yTicks(); track tick.pct) {
-                    <div class="y-tick" [style.bottom.%]="tick.pct">
-                      <span class="y-label">{{ tick.value | number:'1.0-1' }}</span>
-                      <div class="y-line" [class.y-line-zero]="tick.value === 0 || (tick.value < 0.1 && tick.value > -0.1)"></div>
-                    </div>
-                  }
-                </div>
-                <div class="bars-container">
-                  @for (bar of inst.bars; track $index) {
-                    <div class="bar-wrapper">
-                      <div class="bar"
-                          [class.state-compare]="bar.state === 'compare'"
-                          [class.state-swap]="bar.state === 'swap'"
-                          [class.state-pivot]="bar.state === 'pivot'"
-                          [class.state-sorted]="bar.state === 'sorted'"
-                          [class.bar-negative]="bar.value < 0"
-                          [style.height.%]="barLayout(bar.value).height"
-                          [style.bottom.%]="barLayout(bar.value).bottom">
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            } @else {
-              <!-- Vue nombres -->
-              <div class="numbers-area">
-                @for (bar of inst.bars; track $index) {
-                  <div class="number-cell"
-                      [class.state-compare]="bar.state === 'compare'"
-                      [class.state-swap]="bar.state === 'swap'"
-                      [class.state-pivot]="bar.state === 'pivot'"
-                      [class.state-sorted]="bar.state === 'sorted'">
-                    {{ formatValue(bar.value) }}
-                  </div>
+        <!-- ── Tableau comparaison ── -->
+        <div class="comparison-table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th class="col-algo">Algorithme</th>
+                <th class="col-complexity">Best</th>
+                <th class="col-complexity">Avg</th>
+                <th class="col-complexity">Worst</th>
+                <th class="col-complexity">Space</th>
+                <th class="col-stat">Comp.</th>
+                <th class="col-stat">Éch.</th>
+                <th class="col-stat">Pivots</th>
+                <th class="col-stat">Triés</th>
+                <th class="col-stat">Non triés</th>
+                <th class="col-status"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (inst of instances(); track inst.name) {
+                @if (getMetaForAlgo(inst.name); as meta) {
+                  <tr [class.row-done]="inst.done">
+                    <td class="col-algo">
+                      <span class="algo-name">{{ inst.name }}</span>
+                    </td>
+                    <td class="col-complexity">
+                      <span class="cplx-label">BEST</span>
+                      <span class="cplx-value best">{{ meta.bestCase }}</span>
+                    </td>
+                    <td class="col-complexity">
+                      <span class="cplx-label">AVG</span>
+                      <span class="cplx-value avg">{{ meta.complexity }}</span>
+                    </td>
+                    <td class="col-complexity">
+                      <span class="cplx-label">WORST</span>
+                      <span class="cplx-value worst">{{ meta.worstCase }}</span>
+                    </td>
+                    <td class="col-complexity">
+                      <span class="cplx-label">SPACE</span>
+                      <span class="cplx-value space">{{ meta.spaceComplexity }}</span>
+                    </td>
+                    <td class="col-stat">
+                      <span class="stat-label-sm">COMP.</span>
+                      <span class="stat-val color-compare">{{ inst.comparisons }}</span>
+                    </td>
+                    <td class="col-stat">
+                      <span class="stat-label-sm">ÉCH.</span>
+                      <span class="stat-val color-swap">{{ inst.swaps }}</span>
+                    </td>
+                    <td class="col-stat">
+                      <span class="stat-label-sm">PIVOTS</span>
+                      <span class="stat-val color-pivot">{{ inst.pivots }}</span>
+                    </td>
+                    <td class="col-stat">
+                      <span class="stat-label-sm">TRIÉS</span>
+                      <span class="stat-val color-sorted">{{ inst.sortedCount }}</span>
+                    </td>
+                    <td class="col-stat">
+                      <span class="stat-label-sm">NON TRIÉS</span>
+                      <span class="stat-val color-unsorted">{{ arraySize() - inst.sortedCount }}</span>
+                    </td>
+                    <td class="col-status">
+                      @if (inst.done) {
+                        <span class="badge-done">✓ Terminé</span>
+                      } @else if (isRunning()) {
+                        <span class="badge-running">En cours</span>
+                      }
+                    </td>
+                  </tr>
                 }
-              </div>
-            }
+              }
+            </tbody>
+          </table>
+        </div>
 
-            @if (inst.done) {
-              <div class="done-banner"><span class="done-icon">✓</span> Terminé</div>
-            }
+      } @else {
 
+        <!-- ── Grille de visualisation (mode solo) ── -->
+        <div class="viz-grid grid-1">
+          @for (inst of instances(); track inst.name) {
+            <app-viz-instance
+              [instance]="inst"
+              [viewMode]="viewMode()"
+              [dataType]="selectedDataType()"
+              [arraySize]="arraySize()" />
+          }
+        </div>
+
+      }
+
+      <!-- ── Barre Paramètres (solo uniquement) ── -->
+      @if (showParams() && !comparisonMode()) {
+        <div class="bottom-bar">
+          <span class="bottom-bar-label">Paramètres</span>
+
+          <!-- Toggle vue -->
+          <div class="bottom-bar-section">
+            <span class="param-label-text">Affichage</span>
+            <button class="action-btn action-btn-view"
+                    [class.active]="viewMode() === 'numbers'"
+                    (click)="toggleViewMode()">
+              @if (viewMode() === 'bars') { ≡ Barres } @else { ▮ Nombres }
+            </button>
           </div>
-        }
-      </div>
 
-      <!-- Barre Input (sous le canvas) -->
+          <!-- Délai -->
+          <div class="bottom-bar-section bottom-bar-grow">
+            <span class="param-label-text">Délai</span>
+            <span class="control-value">{{ speedMs() }}ms</span>
+            <input type="range" min="1" max="500" class="slider slider-inline"
+                   [value]="speedMs()"
+                   (input)="onSpeedChange(+$any($event.target).value)">
+            <span class="slider-hint">Rapide → Lent</span>
+          </div>
+        </div>
+      }
+
+      <!-- ── Barre Input ── -->
       @if (showInput()) {
         <div class="bottom-bar">
           <div class="bottom-bar-section">
             <span class="bottom-bar-label">Entrée</span>
-            <button class="toggle-btn" [class.active]="manualInput()"
-                    [disabled]="isRunning()" (click)="toggleManualInput()">
+            <button class="toggle-btn small-toggle"
+                    [class.active]="manualInput()"
+                    [disabled]="isRunning()"
+                    (click)="toggleManualInput()">
               <span class="toggle-thumb"></span>
             </button>
           </div>
 
-          <!-- Select type — toujours visible -->
+          <!-- Type selector -->
           <div class="bottom-bar-section">
             <select class="code-select"
                     [value]="selectedDataType()"
@@ -232,50 +261,67 @@
                         (blur)="generateArray()"></textarea>
             </div>
           } @else {
+            <!-- Randomize + Reset -->
+            @if (!comparisonMode()) {
+              <div class="bottom-bar-section">
+                <button class="btn btn-icon" title="Randomize"
+                        [disabled]="isRunning()" (click)="generateArray()">⟳</button>
+                <button class="btn btn-icon" title="Réinitialiser"
+                        [disabled]="isRunning()" (click)="reinitialize()">↺</button>
+              </div>
+            }
+
+            <!-- Taille -->
             <div class="bottom-bar-section">
               <span class="param-label-text">Taille</span>
               <div class="number-input">
-                <button class="number-btn" [disabled]="isRunning() || arraySize() <= 2"
+                <button class="number-btn"
+                        [disabled]="isRunning() || arraySize() <= 2"
                         (click)="incrementSize(-1)">−</button>
                 <input type="number" class="number-field"
-                      [value]="arraySize()" min="2" max="1000"
-                      [disabled]="isRunning()"
-                      (change)="onArraySizeInput(+$any($event.target).value)">
-                <button class="number-btn" [disabled]="isRunning() || arraySize() >= 1000"
+                       [value]="arraySize()" min="2" max="1000"
+                       [disabled]="isRunning()"
+                       (change)="onArraySizeInput(+$any($event.target).value)">
+                <button class="number-btn"
+                        [disabled]="isRunning() || arraySize() >= 1000"
                         (click)="incrementSize(1)">+</button>
               </div>
             </div>
-            <div class="bottom-bar-section">
-              <span class="param-label-text">Min</span>
-              <div class="number-input">
-                <button class="number-btn" [disabled]="isRunning()"
-                        (click)="incrementMin(-10)">−</button>
-                <input type="number" class="number-field" style="width:64px"
-                      [value]="minValue()"
-                      [disabled]="isRunning()"
-                      (change)="onMinValueChange(+$any($event.target).value)">
-                <button class="number-btn" [disabled]="isRunning()"
-                        (click)="incrementMin(10)">+</button>
-              </div>
-            </div>
+
+            <!-- Max -->
             <div class="bottom-bar-section">
               <span class="param-label-text">Max</span>
               <div class="number-input">
                 <button class="number-btn" [disabled]="isRunning()"
                         (click)="incrementMax(-10)">−</button>
                 <input type="number" class="number-field" style="width:64px"
-                      [value]="maxValue()"
-                      [disabled]="isRunning()"
-                      (change)="onMaxValueChange(+$any($event.target).value)">
+                       [value]="maxValue()"
+                       [disabled]="isRunning()"
+                       (change)="onMaxValueChange(+$any($event.target).value)">
                 <button class="number-btn" [disabled]="isRunning()"
                         (click)="incrementMax(10)">+</button>
+              </div>
+            </div>
+
+            <!-- Min -->
+            <div class="bottom-bar-section">
+              <span class="param-label-text">Min</span>
+              <div class="number-input">
+                <button class="number-btn" [disabled]="isRunning()"
+                        (click)="incrementMin(-10)">−</button>
+                <input type="number" class="number-field" style="width:64px"
+                       [value]="minValue()"
+                       [disabled]="isRunning()"
+                       (change)="onMinValueChange(+$any($event.target).value)">
+                <button class="number-btn" [disabled]="isRunning()"
+                        (click)="incrementMin(10)">+</button>
               </div>
             </div>
           }
         </div>
       }
 
-      <!-- Barre Output -->
+      <!-- ── Barre Output ── -->
       @if (showOutput()) {
         <div class="bottom-bar bottom-bar-output">
           <span class="bottom-bar-label">Sortie</span>
@@ -291,36 +337,36 @@
 
     </main>
 
-    <!-- Code panel -->
+    <!-- ── Code panel (solo uniquement) ── -->
     @if (selectedCodeAlgo() && !comparisonMode()) {
       <aside class="code-panel">
+
         <div class="code-panel-title">{{ selectedCodeAlgo() }}</div>
 
-        @if (complexity(); as c) {
+        @if (selectedMetadata(); as meta) {
           <div class="complexity-grid">
             <div class="complexity-cell">
               <span class="complexity-label">Best</span>
-              <span class="complexity-value best">{{ c.best }}</span>
+              <span class="complexity-value best">{{ meta.bestCase }}</span>
             </div>
             <div class="complexity-cell">
               <span class="complexity-label">Avg</span>
-              <span class="complexity-value avg">{{ c.average }}</span>
+              <span class="complexity-value avg">{{ meta.complexity }}</span>
             </div>
             <div class="complexity-cell">
               <span class="complexity-label">Worst</span>
-              <span class="complexity-value worst">{{ c.worst }}</span>
+              <span class="complexity-value worst">{{ meta.worstCase }}</span>
             </div>
             <div class="complexity-cell">
               <span class="complexity-label">Space</span>
-              <span class="complexity-value space">{{ c.space }}</span>
+              <span class="complexity-value space">{{ meta.spaceComplexity }}</span>
             </div>
           </div>
-        }
 
-        @if (description(); as desc) {
           <div class="code-description">
-            <p class="description-text">{{ desc.summary }}</p>
-            <a class="description-link" [href]="desc.wikipediaUrl"
+            <p class="description-text">{{ meta.description }}</p>
+            <a class="description-link"
+               [href]="meta.wikipediaUrl"
                target="_blank" rel="noopener noreferrer">
               Voir sur Wikipédia ↗
             </a>
@@ -328,10 +374,18 @@
         }
 
         <div class="code-header">
-          <select class="code-select" [value]="selectedLanguage()"
+          <select class="code-select"
+                  [value]="selectedLanguage()"
                   (change)="selectLanguage($any($event.target).value)">
-            @for (lang of CODE_LANGUAGES; track lang) {
+            @for (lang of availableLanguages(); track lang) {
               <option [value]="lang">{{ lang }}</option>
+            }
+          </select>
+          <select class="code-select"
+                  [value]="selectedDataType()"
+                  (change)="selectDataType($any($event.target).value)">
+            @for (dt of DATA_TYPES; track dt) {
+              <option [value]="dt">{{ dt }}</option>
             }
           </select>
         </div>
@@ -344,6 +398,7 @@
             </div>
           }
         </div>
+
       </aside>
     }
 

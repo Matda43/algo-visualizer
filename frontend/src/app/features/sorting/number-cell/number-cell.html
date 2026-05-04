@@ -1,0 +1,7 @@
+<div class="number-cell"
+     [class.state-compare]="bar().state === 'compare'"
+     [class.state-swap]="bar().state === 'swap'"
+     [class.state-pivot]="bar().state === 'pivot'"
+     [class.state-sorted]="bar().state === 'sorted'">
+  {{ formatValue(bar().value) }}
+</div>
