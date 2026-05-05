@@ -8,5 +8,6 @@ public record AlgoMetadata(
         String spaceComplexity,
         String description,
         String wikipediaUrl,
+        boolean stableSort,
         java.util.Map<String, String> codeByLanguage
 ) {}

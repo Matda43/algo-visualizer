@@ -120,6 +120,7 @@ public class MergeSortAlgorithm implements SortingAlgorithm {
                 "O(n log n)", "O(n log n)", "O(n log n)", "O(n)",
                 "Algorithme de tri par fusion basé sur le paradigme diviser pour régner. Divise le tableau en deux moitiés, les trie récursivement, puis les fusionne. Garantit O(n log n) dans tous les cas au prix d'une mémoire supplémentaire.",
                 "https://fr.wikipedia.org/wiki/Tri_fusion",
+                false,
                 Map.of(
                         "Java", """
                     void mergeSort(int[] arr, int l, int r) {

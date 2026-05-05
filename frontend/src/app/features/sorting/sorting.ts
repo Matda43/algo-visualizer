@@ -6,121 +6,121 @@ import { AlgoMetadataService } from './services/algo-metadata.service';
 import { AlgoMetadata } from './models/algo-metadata.model';
 import { AlgoInstance, Bar, SortStep, ExecuteResult, DATA_TYPES, DataType, ViewMode } from './models/sorting.models';
 import { VizInstanceComponent } from './viz-instance/viz-instance';
+import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch';
+import { ComplexityGridComponent } from '../../shared/complexity-grid/complexity-grid';
 
 export type CodeLanguage = string;
 
 interface AlgoQueue {
-  name:         string;
-  queue:        SortStep[];
-  done:         boolean;
-  sessionId?:   string;
-  sub?:         Subscription;
-  stepCount:    number;
-  displayCount: number;
+  name:       string;
+  queue:      SortStep[];
+  done:       boolean;
+  sessionId?: string;
+  sub?:       Subscription;
+  stepCount:  number;
 }
 
 @Component({
   selector:    'app-sorting',
   standalone:  true,
-  imports:     [VizInstanceComponent],
+  imports:     [VizInstanceComponent, ToggleSwitchComponent, ComplexityGridComponent],
   templateUrl: './sorting.html',
   styleUrl:    './sorting.scss',
 })
 export class SortingComponent implements OnInit, OnDestroy {
 
-  // ── Injections ────────────────────────────────────────────────────────────
-  private readonly ws              = inject(WebsocketService);
-  private readonly sanitizer       = inject(DomSanitizer);
-  private readonly algoMetaSvc     = inject(AlgoMetadataService);
+  // ── Injections ─────────────────────────────────────────────────────────────
+  private readonly websocketService  = inject(WebsocketService);
+  private readonly sanitizer         = inject(DomSanitizer);
+  private readonly algoMetadataService = inject(AlgoMetadataService);
 
-  // ── Constants ─────────────────────────────────────────────────────────────
+  // ── Constants ──────────────────────────────────────────────────────────────
   readonly DATA_TYPES = DATA_TYPES;
 
-  // ── Metadata (from backend) ───────────────────────────────────────────────
-  allMetadata   = signal<AlgoMetadata[]>([]);
-  allAlgoNames  = computed(() => this.allMetadata().map(m => m.name));
+  // ── Metadata (from backend) ────────────────────────────────────────────────
+  allMetadata  = signal<AlgoMetadata[]>([]);
+  allAlgoNames = computed(() => this.allMetadata().map(meta => meta.name));
 
-  // ── UI state ──────────────────────────────────────────────────────────────
-  comparisonMode  = signal(false);
-  isPaused        = signal(false);
-  isRunning       = signal(false);
-  sidebarOpen     = signal(true);
-  showRunDropdown = signal(false);
-  showInput       = signal(false);
-  showOutput      = signal(false);
-  viewMode        = signal<ViewMode>('bars');
-  showParams = signal(false);
+  // ── UI state ───────────────────────────────────────────────────────────────
+  comparisonMode = signal(false);
+  isPaused       = signal(false);
+  isRunning      = signal(false);
+  sidebarOpen    = signal(true);
+  showInput      = signal(false);
+  showOutput     = signal(false);
+  showParams     = signal(false);
+  viewMode       = signal<ViewMode>('bars');
 
-  getMetaForAlgo(name: string): AlgoMetadata | null {
-    return this.allMetadata().find(m => m.name === name) ?? null;
+  getMetaForAlgo(algoName: string): AlgoMetadata | null {
+    return this.allMetadata().find(meta => meta.name === algoName) ?? null;
   }
 
-  // ── Algo selection ────────────────────────────────────────────────────────
+  // ── Algo selection ─────────────────────────────────────────────────────────
   selectedAlgos    = signal<string[]>([]);
   selectedCodeAlgo = signal<string | null>(null);
   selectedLanguage = signal<CodeLanguage>('Java');
   selectedDataType = signal<DataType>('int');
 
-  // ── Array params ──────────────────────────────────────────────────────────
-  arraySize    = signal(50);
-  speedMs      = signal(1);
-  minValue     = signal(0);
-  maxValue     = signal(300);
-  manualInput  = signal(false);
-  userInputRaw = signal('');
+  // ── Array params ───────────────────────────────────────────────────────────
+  arraySize     = signal(50);
+  speedMs       = signal(1);
+  minValue      = signal(0);
+  maxValue      = signal(300);
+  manualInput   = signal(false);
+  userInputRaw  = signal('');
   outputNumbers = signal<number[]>([]);
 
-  // ── Viz instances ─────────────────────────────────────────────────────────
+  // ── Viz instances ──────────────────────────────────────────────────────────
   instances = signal<AlgoInstance[]>([]);
 
-  // ── Private ───────────────────────────────────────────────────────────────
-  private stepTrigger$ = new Subject<void>();
-  private destroy$     = new Subject<void>();
-  private currentArray: number[] = [];
-  private initialArray: number[] = [];
-  private algoQueues: AlgoQueue[] = [];
-  private syncLoopActive = false;
+  // ── Private ────────────────────────────────────────────────────────────────
+  private readonly destroy$ = new Subject<void>();
+  private currentArray:     number[] = [];
+  private initialArray:     number[] = [];
+  private algoQueues:       AlgoQueue[] = [];
   private currentSessionId: string | null = null;
+  private syncScheduled    = false;
+  private syncRetryTimer:   ReturnType<typeof setTimeout> | null = null;
 
-  // ── Computed ──────────────────────────────────────────────────────────────
+  // ── Computed ───────────────────────────────────────────────────────────────
 
   allDone = computed(() =>
-    this.instances().length > 0 && this.instances().every(i => i.done)
+    this.instances().length > 0 && this.instances().every(instance => instance.done)
   );
 
   showNextStep = computed(() => this.isPaused() && this.isRunning());
 
   selectedMetadata = computed(() => {
-    const algo = this.selectedCodeAlgo();
-    if (!algo) return null;
-    return this.allMetadata().find(m => m.name === algo) ?? null;
+    const algoName = this.selectedCodeAlgo();
+    if (!algoName) return null;
+    return this.allMetadata().find(meta => meta.name === algoName) ?? null;
   });
 
   availableLanguages = computed(() => {
-    const meta = this.selectedMetadata();
-    if (!meta) return ['Java', 'Python', 'C++', 'C', 'C#', 'JavaScript', 'PHP'];
-    return Object.keys(meta.codeByLanguage);
+    const metadata = this.selectedMetadata();
+    if (!metadata) return ['Java', 'Python', 'C++', 'C', 'C#', 'JavaScript', 'PHP'];
+    return Object.keys(metadata.codeByLanguage);
   });
 
   codeLines = computed(() => {
-    const meta = this.selectedMetadata();
-    if (!meta) return [];
-    const code = meta.codeByLanguage[this.selectedLanguage()] ?? '';
+    const metadata = this.selectedMetadata();
+    if (!metadata) return [];
+    const code = metadata.codeByLanguage[this.selectedLanguage()] ?? '';
     return this.applyDataType(code, this.selectedDataType()).split('\n');
   });
 
   parsedInput = computed(() => {
-    const raw = this.userInputRaw().trim();
-    if (!raw) return null;
-    const nums = raw.split(/[,;\s]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
-    return nums.length > 0 ? nums : null;
+    const rawInput = this.userInputRaw().trim();
+    if (!rawInput) return null;
+    const numbers = rawInput.split(/[,;\s]+/).map(value => parseFloat(value)).filter(value => !isNaN(value));
+    return numbers.length > 0 ? numbers : null;
   });
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
-    this.ws.connect().subscribe();
-    this.algoMetaSvc.getAll().subscribe(metadata => {
+    this.websocketService.connect().subscribe();
+    this.algoMetadataService.getAll().subscribe(metadata => {
       this.allMetadata.set(metadata);
       if (metadata.length > 0) {
         this.selectedAlgos.set([metadata[0].name]);
@@ -131,41 +131,41 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.syncRetryTimer) clearTimeout(this.syncRetryTimer);
-    if (this.currentSessionId) this.ws.send('/app/session.stop', this.currentSessionId);
-    this.algoQueues.forEach(aq => {
-      if (aq.sessionId) this.ws.send('/app/session.stop', aq.sessionId);
+    if (this.currentSessionId) this.websocketService.send('/app/session.stop', this.currentSessionId);
+    this.algoQueues.forEach(queue => {
+      if (queue.sessionId) this.websocketService.send('/app/session.stop', queue.sessionId);
     });
     this.destroy$.next();
     this.destroy$.complete();
-    this.ws.disconnect();
+    this.websocketService.disconnect();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
-  private makeInstance(name: string, arr: number[]): AlgoInstance {
+  private makeInstance(algoName: string, arr: number[]): AlgoInstance {
     return {
-      name,
-      bars:         arr.map(v => ({ value: v, state: 'default' })),
-      comparisons:  0,
-      swaps:        0,
-      pivots:       0,
-      sortedCount:  0,
-      done:         false,
+      name:          algoName,
+      bars:          arr.map(value => ({ value, state: 'default' })),
+      comparisons:   0,
+      swaps:         0,
+      pivots:        0,
+      sortedCount:   0,
+      done:          false,
       sortedIndices: new Set(),
     };
   }
 
   private rebuildInstances(arr: number[]): void {
     this.instances.set(
-      this.selectedAlgos().map(name => this.makeInstance(name, arr))
+      this.selectedAlgos().map(algoName => this.makeInstance(algoName, arr))
     );
   }
 
-  private normalizeValue(v: number): number {
+  private normalizeValue(rawValue: number): number {
     switch (this.selectedDataType()) {
-      case 'float':  return parseFloat(v.toFixed(2));
-      case 'double': return parseFloat(v.toFixed(4));
-      default:       return Math.trunc(v);
+      case 'float':  return parseFloat(rawValue.toFixed(2));
+      case 'double': return parseFloat(rawValue.toFixed(4));
+      default:       return Math.trunc(rawValue);
     }
   }
 
@@ -177,11 +177,11 @@ export class SortingComponent implements OnInit, OnDestroy {
   }
 
   private barStateForIndex(
-    idx: number, step: SortStep, sortedIndices: Set<number>
+    index: number, step: SortStep, sortedIndices: Set<number>
   ): Bar['state'] {
     if (step.type === 'DONE') return 'sorted';
-    if (sortedIndices.has(idx)) return 'sorted';
-    if (idx === step.indexA || idx === step.indexB) {
+    if (sortedIndices.has(index)) return 'sorted';
+    if (index === step.indexA || index === step.indexB) {
       if (step.type === 'SWAP')  return 'swap';
       if (step.type === 'PIVOT') return 'pivot';
       return 'compare';
@@ -189,18 +189,18 @@ export class SortingComponent implements OnInit, OnDestroy {
     return 'default';
   }
 
-  // ── Formatting ────────────────────────────────────────────────────────────
+  // ── Formatting ─────────────────────────────────────────────────────────────
 
   formatOutput(values: number[]): string {
-    return values.map(v => this.formatValue(v)).join(', ');
+    return values.map(value => this.formatValue(value)).join(', ');
   }
 
-  formatValue(v: number): string {
+  formatValue(value: number): string {
     switch (this.selectedDataType()) {
-      case 'float':  return v.toFixed(2) + 'f';
-      case 'double': return v.toFixed(4);
-      case 'long':   return v.toString() + 'L';
-      default:       return Math.round(v).toString();
+      case 'float':  return value.toFixed(2) + 'f';
+      case 'double': return value.toFixed(4);
+      case 'long':   return value.toString() + 'L';
+      default:       return Math.round(value).toString();
     }
   }
 
@@ -228,14 +228,14 @@ export class SortingComponent implements OnInit, OnDestroy {
     return this.sanitizer.bypassSecurityTrustHtml(highlighted);
   }
 
-  // ── Array generation ──────────────────────────────────────────────────────
+  // ── Array generation ───────────────────────────────────────────────────────
 
   generateArray(): void {
-    const parsed = this.parsedInput();
+    const parsedInput = this.parsedInput();
     let arr: number[];
 
-    if (this.manualInput() && parsed) {
-      arr = parsed.map(v => this.normalizeValue(v));
+    if (this.manualInput() && parsedInput) {
+      arr = parsedInput.map(value => this.normalizeValue(value));
       this.arraySize.set(arr.length);
     } else if (!this.manualInput()) {
       const min   = this.minValue();
@@ -265,84 +265,81 @@ export class SortingComponent implements OnInit, OnDestroy {
     this.rebuildInstances(this.currentArray);
   }
 
-  // ── Array param changes ───────────────────────────────────────────────────
+  // ── Array param changes ────────────────────────────────────────────────────
 
-  onArraySizeInput(v: number): void {
-    this.arraySize.set(Math.min(1000, Math.max(2, v || 2)));
+  onArraySizeInput(rawValue: number): void {
+    this.arraySize.set(Math.min(1000, Math.max(2, rawValue || 2)));
     this.generateArray();
   }
 
   incrementSize(delta: number): void {
-    this.arraySize.update(v => Math.min(1000, Math.max(2, v + delta)));
+    this.arraySize.update(value => Math.min(1000, Math.max(2, value + delta)));
     this.generateArray();
   }
 
-// ── Speed change — propaguer au backend ───────────────────────────────────
-
-  onSpeedChange(v: number): void {
-    this.speedMs.set(v);
+  onSpeedChange(newSpeed: number): void {
+    this.speedMs.set(newSpeed);
     if (!this.isRunning()) return;
 
     if (this.comparisonMode()) {
-      this.algoQueues.forEach(aq => {
-        if (aq.sessionId) this.ws.send('/app/session.speed', { sessionId: aq.sessionId, speedMs: v });
+      this.algoQueues.forEach(queue => {
+        if (queue.sessionId) {
+          this.websocketService.send('/app/session.speed', { sessionId: queue.sessionId, speedMs: newSpeed });
+        }
       });
     } else if (this.currentSessionId) {
-      this.ws.send('/app/session.speed', { sessionId: this.currentSessionId, speedMs: v });
+      this.websocketService.send('/app/session.speed', { sessionId: this.currentSessionId, speedMs: newSpeed });
     }
   }
-  onMinValueChange(v: number): void  { this.minValue.set(v);  this.generateArray(); }
-  onMaxValueChange(v: number): void  { this.maxValue.set(v);  this.generateArray(); }
-  incrementMin(delta: number): void  { this.minValue.update(v => v + delta);  this.generateArray(); }
-  incrementMax(delta: number): void  { this.maxValue.update(v => v + delta);  this.generateArray(); }
+
+  onMinValueChange(value: number): void  { this.minValue.set(value);  this.generateArray(); }
+  onMaxValueChange(value: number): void  { this.maxValue.set(value);  this.generateArray(); }
+  incrementMin(delta: number): void      { this.minValue.update(v => v + delta); this.generateArray(); }
+  incrementMax(delta: number): void      { this.maxValue.update(v => v + delta); this.generateArray(); }
 
   toggleManualInput(): void {
-    this.manualInput.update(v => !v);
+    this.manualInput.update(value => !value);
     this.generateArray();
   }
 
-  // ── Mode toggles ──────────────────────────────────────────────────────────
+  // ── Mode toggles ───────────────────────────────────────────────────────────
 
   toggleComparisonMode(): void {
     if (this.isRunning()) return;
-    const next = !this.comparisonMode();
-    this.comparisonMode.set(next);
-    if (!next) {
-      const first = this.selectedAlgos()[0];
-      this.selectedAlgos.set([first]);
+    const isNowComparison = !this.comparisonMode();
+    this.comparisonMode.set(isNowComparison);
+    if (!isNowComparison) {
+      const firstAlgo = this.selectedAlgos()[0];
+      this.selectedAlgos.set([firstAlgo]);
       this.rebuildInstances(this.currentArray);
     }
-    if (next) this.selectedCodeAlgo.set(null);
+    if (isNowComparison) this.selectedCodeAlgo.set(null);
   }
 
-  toggleAlgo(algo: string): void {
+  toggleAlgo(algoName: string): void {
     if (this.isRunning()) return;
     const current = this.selectedAlgos();
-    let next: string[];
 
     if (this.comparisonMode()) {
-      next = current.includes(algo)
-        ? current.filter(a => a !== algo)
-        : [...current, algo];
-      if (next.length === 0) return;
+      const updated = current.includes(algoName)
+        ? current.filter(name => name !== algoName)
+        : [...current, algoName];
+      if (updated.length === 0) return;
+      this.selectedAlgos.set(updated);
     } else {
-      if (current[0] === algo) return;
-      next = [algo];
+      if (current[0] === algoName) return;
+      this.selectedAlgos.set([algoName]);
       this.selectedCodeAlgo.set(null);
     }
 
-    this.selectedAlgos.set(next);
     this.rebuildInstances(this.currentArray);
   }
 
-  toggleSidebar(): void    { this.sidebarOpen.update(v => !v); }
-  toggleRunDropdown(): void { this.showRunDropdown.update(v => !v); }
-  toggleViewMode(): void   { this.viewMode.update(v => v === 'bars' ? 'numbers' : 'bars'); }
+  toggleSidebar(): void  { this.sidebarOpen.update(value => !value); }
+  toggleViewMode(): void { this.viewMode.update(mode => mode === 'bars' ? 'numbers' : 'bars'); }
 
   toggleCodePanel(algoName: string): void {
-    this.selectedCodeAlgo.update(current =>
-      current === algoName ? null : algoName
-    );
+    this.selectedCodeAlgo.update(current => current === algoName ? null : algoName);
   }
 
   selectLanguage(lang: CodeLanguage): void { this.selectedLanguage.set(lang); }
@@ -352,11 +349,10 @@ export class SortingComponent implements OnInit, OnDestroy {
     this.generateArray();
   }
 
-  // ── Run controls ──────────────────────────────────────────────────────────
+  // ── Run controls ───────────────────────────────────────────────────────────
 
   start(): void {
     if (this.isRunning()) return;
-    this.showRunDropdown.set(false);
     this.isPaused.set(false);
     this.isRunning.set(true);
     this.outputNumbers.set([]);
@@ -375,17 +371,17 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
 
     if (this.comparisonMode()) {
-      this.algoQueues.forEach(aq => {
-        if (!aq.sessionId) return;
-        this.ws.send(
+      this.algoQueues.forEach(queue => {
+        if (!queue.sessionId) return;
+        this.websocketService.send(
           nowPaused ? '/app/session.pause' : '/app/session.resume',
-          { sessionId: aq.sessionId }
+          { sessionId: queue.sessionId }
         );
       });
       if (!nowPaused) this.tryDrainSync();
     } else {
       if (!this.currentSessionId) return;
-      this.ws.send(
+      this.websocketService.send(
         nowPaused ? '/app/session.pause' : '/app/session.resume',
         { sessionId: this.currentSessionId }
       );
@@ -396,53 +392,51 @@ export class SortingComponent implements OnInit, OnDestroy {
     if (!this.isPaused()) return;
 
     if (this.comparisonMode()) {
-      // Envoyer /session.step à chaque algo actif
       this.algoQueues
-        .filter(aq => !aq.done && aq.sessionId)
-        .forEach(aq => {
-          this.ws.send('/app/session.step', { sessionId: aq.sessionId });
+        .filter(queue => !queue.done && queue.sessionId)
+        .forEach(queue => {
+          this.websocketService.send('/app/session.step', { sessionId: queue.sessionId });
         });
     } else {
       if (!this.currentSessionId) return;
-      this.ws.send('/app/session.step', { sessionId: this.currentSessionId });
+      this.websocketService.send('/app/session.step', { sessionId: this.currentSessionId });
     }
   }
 
   execute(): void {
     if (this.currentSessionId) {
-      this.ws.send('/app/session.stop', this.currentSessionId);
+      this.websocketService.send('/app/session.stop', this.currentSessionId);
     }
     if (this.isRunning()) return;
-    this.showRunDropdown.set(false);
     this.outputNumbers.set([]);
     this.rebuildInstances(this.currentArray);
     this.isRunning.set(true);
 
-    const algos     = this.instances();
-    let   doneCount = 0;
+    const currentInstances = this.instances();
+    let completedCount = 0;
 
-    algos.forEach(inst => {
+    currentInstances.forEach(instance => {
       const sessionId = crypto.randomUUID();
-      this.ws.subscribe<ExecuteResult>(`/topic/execute.${sessionId}`)
+      this.websocketService.subscribe<ExecuteResult>(`/topic/execute.${sessionId}`)
         .pipe(takeUntil(this.destroy$))
         .subscribe(result => {
           this.instances.update(list =>
-            list.map(i => i.name !== inst.name ? i : {
-              ...i,
-              bars: result.sortedArray.map(v => ({ value: v, state: 'sorted' as const })),
+            list.map(item => item.name !== instance.name ? item : {
+              ...item,
+              bars:          result.sortedArray.map(value => ({ value, state: 'sorted' as const })),
               comparisons:   result.comparisons,
               swaps:         result.swaps,
               pivots:        result.pivots,
               sortedCount:   result.sortedArray.length,
               done:          true,
-              sortedIndices: new Set(result.sortedArray.map((_, k) => k)),
+              sortedIndices: new Set(result.sortedArray.map((_, index) => index)),
             })
           );
           this.outputNumbers.set(result.sortedArray);
-          if (++doneCount === algos.length) this.isRunning.set(false);
+          if (++completedCount === currentInstances.length) this.isRunning.set(false);
         });
-      this.ws.send('/app/session.execute', {
-        algo:     inst.name,
+      this.websocketService.send('/app/session.execute', {
+        algo:     instance.name,
         array:    this.currentArray,
         sessionId,
         dataType: this.selectedDataType().toUpperCase(),
@@ -450,19 +444,19 @@ export class SortingComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Solo run ──────────────────────────────────────────────────────────────
+  // ── Solo run ───────────────────────────────────────────────────────────────
 
   private startSolo(): void {
-    const inst      = this.instances()[0];
-    const sessionId = crypto.randomUUID();
+    const firstInstance = this.instances()[0];
+    const sessionId     = crypto.randomUUID();
     this.currentSessionId = sessionId;
 
-    this.ws.subscribe<SortStep>(`/topic/session.${sessionId}`)
+    this.websocketService.subscribe<SortStep>(`/topic/session.${sessionId}`)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(step => this.applyStep(inst.name, step));
+      .subscribe(step => this.applyStep(firstInstance.name, step));
 
-    this.ws.send('/app/session.start', {
-      algo:     inst.name,
+    this.websocketService.send('/app/session.start', {
+      algo:     firstInstance.name,
       array:    this.currentArray,
       sessionId,
       dataType: this.selectedDataType().toUpperCase(),
@@ -470,61 +464,49 @@ export class SortingComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ── Comparison run ─────────────────────────────────────────────────────────
 
-  // ── Comparison run ────────────────────────────────────────────────────────
-
-  private readonly BATCH_SIZE = 50; // steps par demande
   private readonly LARGE_ARRAY_THRESHOLD = 200;
 
   private startComparison(): void {
-    const algos = this.instances();
-    this.algoQueues = algos.map(inst => ({
-      name: inst.name, queue: [], done: false,
+    const currentInstances = this.instances();
+    this.algoQueues = currentInstances.map(instance => ({
+      name: instance.name, queue: [], done: false,
       sessionId: crypto.randomUUID(),
-      stepCount: 0, displayCount: 0
+      stepCount: 0,
     }));
     this.syncScheduled = false;
 
     const isLargeArray = this.arraySize() > this.LARGE_ARRAY_THRESHOLD;
 
-    this.algoQueues.forEach(aq => {
-      this.ws.subscribe<SortStep>(`/topic/session.${aq.sessionId}`)
+    this.algoQueues.forEach(queue => {
+      this.websocketService.subscribe<SortStep>(`/topic/session.${queue.sessionId}`)
         .pipe(takeUntil(this.destroy$))
         .subscribe(step => {
-          aq.queue.push(step);
-          aq.stepCount++;
+          queue.queue.push(step);
+          queue.stepCount++;
           this.tryDrainSync();
         });
 
-      this.ws.send('/app/session.start', {
-        algo:      aq.name,
+      this.websocketService.send('/app/session.start', {
+        algo:      queue.name,
         array:     this.currentArray,
-        sessionId: aq.sessionId,
+        sessionId: queue.sessionId,
         dataType:  this.selectedDataType().toUpperCase(),
-        // Pour grands tableaux : speedMs=0 = envoi immédiat de tous les steps
         speedMs:   isLargeArray ? 0 : this.speedMs(),
       });
     });
   }
 
-  // Remplacer drainSyncLoop par tryDrainSync + une boucle continue
-  private drainSyncLoop(): void {
-    this.tryDrainSync();
-  }
-
-  private syncScheduled = false;
-  private syncRetryTimer: ReturnType<typeof setTimeout> | null = null;
-
   private tryDrainSync(): void {
     if (this.isPaused() || !this.isRunning() || this.syncScheduled) return;
 
-    const active = this.algoQueues.filter(aq => !aq.done);
-    if (active.length === 0) return;
+    const activeQueues = this.algoQueues.filter(queue => !queue.done);
+    if (activeQueues.length === 0) return;
 
-    const allReady = active.every(aq => aq.queue.length > 0);
+    const allQueuesReady = activeQueues.every(queue => queue.queue.length > 0);
 
-    if (!allReady) {
-      // Retry dans 10ms — les steps WS arrivent en async
+    if (!allQueuesReady) {
       if (this.syncRetryTimer) clearTimeout(this.syncRetryTimer);
       this.syncRetryTimer = setTimeout(() => {
         this.syncRetryTimer = null;
@@ -541,12 +523,10 @@ export class SortingComponent implements OnInit, OnDestroy {
       this.syncScheduled = false;
       if (this.isPaused() || !this.isRunning()) return;
 
-      const stillActive = this.algoQueues.filter(aq => !aq.done);
-      if (stillActive.length === 0) return;
+      const stillActiveQueues = this.algoQueues.filter(queue => !queue.done);
+      if (stillActiveQueues.length === 0) return;
 
-      // Vérifier à nouveau que tous ont des steps
-      if (!stillActive.every(aq => aq.queue.length > 0)) {
-        // Retry
+      if (!stillActiveQueues.every(queue => queue.queue.length > 0)) {
         if (this.syncRetryTimer) clearTimeout(this.syncRetryTimer);
         this.syncRetryTimer = setTimeout(() => {
           this.syncRetryTimer = null;
@@ -555,20 +535,16 @@ export class SortingComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Consommer 1 step de chaque algo actif
-      stillActive.forEach(aq => {
-        const step = aq.queue.shift()!;
-        aq.displayCount++;
-        if (step.type === 'DONE') aq.done = true;
-        this.applyStep(aq.name, step);
+      stillActiveQueues.forEach(queue => {
+        const step = queue.queue.shift()!;
+        if (step.type === 'DONE') queue.done = true;
+        this.applyStep(queue.name, step);
       });
 
-      // Continuer immédiatement ou après délai
       this.tryDrainSync();
     };
 
     if (delay <= 1) {
-      // Micro-task pour ne pas bloquer le rendu Angular
       Promise.resolve().then(proceed);
     } else {
       timer(delay)
@@ -577,15 +553,15 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Apply step ────────────────────────────────────────────────────────────
+  // ── Apply step ─────────────────────────────────────────────────────────────
 
   private applyStep(algoName: string, step: SortStep): void {
     this.instances.update(list =>
-      list.map(i => {
-        if (i.name !== algoName) return i;
+      list.map(instance => {
+        if (instance.name !== algoName) return instance;
 
-        const sortedIndices = new Set(i.sortedIndices);
-        let { comparisons, swaps, pivots, sortedCount } = i;
+        const sortedIndices = new Set(instance.sortedIndices);
+        let { comparisons, swaps, pivots, sortedCount } = instance;
 
         if (step.type === 'COMPARE') comparisons++;
         if (step.type === 'SWAP')    swaps++;
@@ -596,17 +572,17 @@ export class SortingComponent implements OnInit, OnDestroy {
         }
         if (step.type === 'DONE') {
           sortedIndices.clear();
-          step.stateSnapshot.forEach((_, k) => sortedIndices.add(k));
+          step.stateSnapshot.forEach((_, index) => sortedIndices.add(index));
           sortedCount = step.stateSnapshot.length;
         }
 
-        const bars = step.stateSnapshot.map((v, idx) => ({
-          value: v,
-          state: this.barStateForIndex(idx, step, sortedIndices),
+        const bars = step.stateSnapshot.map((value, index) => ({
+          value,
+          state: this.barStateForIndex(index, step, sortedIndices),
         }));
 
         return {
-          ...i, bars, comparisons, swaps, pivots, sortedCount,
+          ...instance, bars, comparisons, swaps, pivots, sortedCount,
           done: step.type === 'DONE',
           sortedIndices,
         };

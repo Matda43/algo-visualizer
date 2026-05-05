@@ -47,6 +47,7 @@ public class HeapSortAlgorithm implements SortingAlgorithm {
                 "O(n log n)", "O(n log n)", "O(n log n)", "O(1)",
                 "Algorithme de tri utilisant une structure de tas (heap) binaire. Construit d'abord un tas max, puis extrait répétitivement le maximum pour construire le tableau trié. Combine O(n log n) garanti et tri en place.",
                 "https://fr.wikipedia.org/wiki/Tri_par_tas",
+                false,
                 Map.of(
                         "Java", """
                     void heapSort(int[] arr) {

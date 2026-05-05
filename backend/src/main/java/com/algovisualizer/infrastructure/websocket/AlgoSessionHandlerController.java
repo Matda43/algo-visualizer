@@ -2,7 +2,6 @@ package com.algovisualizer.infrastructure.websocket;
 
 import com.algovisualizer.domain.model.DataType;
 import com.algovisualizer.domain.model.SortStep;
-import com.algovisualizer.domain.model.StepType;
 import com.algovisualizer.domain.port.SortingAlgorithm;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -27,7 +26,6 @@ public class AlgoSessionHandlerController {
 
     public AlgoSessionHandlerController(
             List<SortingAlgorithm> algorithmList,
-            StepBroadcasterService broadcaster,
             SimpMessagingTemplate template
     ) {
         this.algorithms = algorithmList.stream()

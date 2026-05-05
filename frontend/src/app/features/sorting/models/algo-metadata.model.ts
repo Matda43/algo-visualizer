@@ -6,5 +6,6 @@ export interface AlgoMetadata {
   spaceComplexity: string;
   description: string;
   wikipediaUrl: string;
+  stableSort: boolean;
   codeByLanguage: Record<string, string>;
 }

@@ -47,6 +47,7 @@ public class BubbleSortAlgorithm implements SortingAlgorithm {
                 "O(n²)", "O(n²)", "O(n)", "O(1)",
                 "Algorithme de tri simple qui parcourt répétitivement la liste, compare les éléments adjacents et les échange s'ils sont dans le mauvais ordre. Très inefficace sur de grandes listes mais simple à comprendre et implémenter.",
                 "https://fr.wikipedia.org/wiki/Tri_%C3%A0_bulles",
+                true,
                 Map.of(
                         "Java",       """
                           void bubbleSort(int[] arr) {

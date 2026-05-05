@@ -80,6 +80,7 @@ public class QuickSortAlgorithm implements SortingAlgorithm {
                 "O(n log n)", "O(n²)", "O(n log n)", "O(log n)",
                 "Algorithme de tri par division : choisit un pivot (médiane de trois), partitionne le tableau en deux sous-tableaux puis trie récursivement chaque partie. Très efficace en pratique grâce à la sélection du pivot par médiane de trois.",
                 "https://fr.wikipedia.org/wiki/Tri_rapide",
+                false,
                 Map.of(
                         "Java", """
                     int partition(int[] arr, int low, int high) {

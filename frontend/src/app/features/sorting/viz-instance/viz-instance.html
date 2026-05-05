@@ -1,31 +1,19 @@
 <div class="viz-wrapper">
+
+  <!-- Barre de stats -->
   <div class="stats-bar">
-    <span class="stat-algo">{{ instance().name }}</span>
-    <div class="stat-divider"></div>
-    <div class="stat-row">
-      <div class="stat">
-        <span class="stat-value color-compare">{{ instance().comparisons }}</span>
-        <span class="stat-label">Comp.</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value color-swap">{{ instance().swaps }}</span>
-        <span class="stat-label">Éch.</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value color-pivot">{{ instance().pivots }}</span>
-        <span class="stat-label">Pivots</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value color-sorted">{{ instance().sortedCount }}</span>
-        <span class="stat-label">Triés</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value color-unsorted">{{ unsortedCount() }}</span>
-        <span class="stat-label">Non triés</span>
-      </div>
+    <span class="algo-name">{{ instance().name }}</span>
+    <div class="stats-divider"></div>
+    <div class="stats-row">
+      <app-stat-badge label="Comp."     [value]="instance().comparisons" color="compare"  />
+      <app-stat-badge label="Éch."      [value]="instance().swaps"       color="swap"     />
+      <app-stat-badge label="Pivots"    [value]="instance().pivots"      color="pivot"    />
+      <app-stat-badge label="Triés"     [value]="instance().sortedCount" color="sorted"   />
+      <app-stat-badge label="Non triés" [value]="unsortedCount()"        color="unsorted" />
     </div>
   </div>
 
+  <!-- Vue barres -->
   @if (viewMode() === 'bars') {
     <div class="bars-area">
       <div class="y-axis">
@@ -46,6 +34,7 @@
       </div>
     </div>
   } @else {
+    <!-- Vue nombres -->
     <div class="numbers-area">
       @for (bar of instance().bars; track $index) {
         <app-number-cell [bar]="bar" [dataType]="dataType()" />
@@ -53,9 +42,12 @@
     </div>
   }
 
+  <!-- Badge "Terminé" -->
   @if (instance().done) {
     <div class="done-banner">
-      <span class="done-icon">✓</span> Terminé
+      <span class="done-check">✓</span>
+      <span>TERMINÉ</span>
     </div>
   }
+
 </div>
