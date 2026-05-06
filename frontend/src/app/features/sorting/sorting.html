@@ -10,6 +10,7 @@
           <app-toggle-switch
             [(active)]="comparisonMode"
             [disabled]="isRunning()"
+            (activeChange)="toggleComparisonMode()"
             label="Mode Comparaison" />
         </div>
 
@@ -136,7 +137,7 @@
                         <span class="badge badge--done">Terminé</span>
                       } @else if (isRunning()) {
                         <span class="badge badge--running">En cours</span>
-                      }@else {
+                      } @else {
                         <span class="badge badge--ready">Prêt</span>
                       }
                     </td>
@@ -169,11 +170,14 @@
 
           <div class="bar-section">
             <span class="param-label">Affichage</span>
-            <button class="pill-btn"
-                    [class.is-active]="viewMode() === 'numbers'"
-                    (click)="toggleViewMode()">
-              @if (viewMode() === 'bars') { ≡ Barres } @else { ▮ Nombres }
-            </button>
+            <select class="select-field"
+                    [value]="viewMode()"
+                    (change)="selectViewMode($any($event.target).value)"
+                    aria-label="Mode d'affichage">
+              @for (mode of VIEW_MODES; track mode.value) {
+                <option [value]="mode.value">{{ mode.label }}</option>
+              }
+            </select>
           </div>
 
           <div class="bar-section bar-section--grow">
@@ -204,13 +208,13 @@
               }
             </select>
           </div>
-          
+
           <div class="bar-section">
             <span class="param-label">
-              @if(manualInput()){ 
-                Manuel 
-              }@else{ 
-                Auto. 
+              @if (manualInput()) {
+                Manuel
+              } @else {
+                Auto.
               }
             </span>
             <app-toggle-switch
@@ -275,7 +279,6 @@
                 <button class="number-btn" [disabled]="isRunning()" (click)="incrementMax(10)">+</button>
               </div>
             </div>
-            
           }
         </div>
       }

@@ -13,33 +13,48 @@
     </div>
   </div>
 
-  <!-- Vue barres -->
-  @if (viewMode() === 'bars') {
-    <div class="bars-area">
-      <div class="y-axis">
-        @for (tick of yTicks(); track tick.pct) {
-          <div class="y-tick" [style.bottom.%]="tick.pct">
-            <span class="y-label">{{ tick.value | number:'1.0-1' }}</span>
-            <div class="y-line" [class.y-line-zero]="isZeroTick(tick.value)"></div>
-          </div>
-        }
+  @switch (viewMode()) {
+
+    @case ('bars') {
+      <div class="bars-area">
+        <div class="y-axis">
+          @for (tick of yTicks(); track tick.pct) {
+            <div class="y-tick" [style.bottom.%]="tick.pct">
+              <span class="y-label">{{ tick.value | number:'1.0-1' }}</span>
+              <div class="y-line" [class.y-line-zero]="isZeroTick(tick.value)"></div>
+            </div>
+          }
+        </div>
+        <div class="bars-container">
+          @for (bar of instance().bars; track $index) {
+            <app-sorting-bar
+              [bar]="bar"
+              [height]="barLayout(bar.value).height"
+              [bottom]="barLayout(bar.value).bottom" />
+          }
+        </div>
       </div>
-      <div class="bars-container">
+    }
+
+    @case ('numbers') {
+      <div class="numbers-area">
         @for (bar of instance().bars; track $index) {
-          <app-sorting-bar
-            [bar]="bar"
-            [height]="barLayout(bar.value).height"
-            [bottom]="barLayout(bar.value).bottom" />
+          <app-number-cell [bar]="bar" [dataType]="dataType()" />
         }
       </div>
-    </div>
-  } @else {
-    <!-- Vue nombres -->
-    <div class="numbers-area">
-      @for (bar of instance().bars; track $index) {
-        <app-number-cell [bar]="bar" [dataType]="dataType()" />
-      }
-    </div>
+    }
+
+    @case ('mosaic') {
+      <div class="mosaic-area" [style.--mosaic-cols]="mosaicCols()">
+        @for (bar of instance().bars; track $index) {
+          <app-mosaic-cell
+            [bar]="bar"
+            [minValue]="mosaicMin()"
+            [maxValue]="mosaicMax()" />
+        }
+      </div>
+    }
+
   }
 
   <!-- Badge "Terminé" -->

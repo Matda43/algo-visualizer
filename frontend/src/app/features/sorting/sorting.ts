@@ -30,12 +30,17 @@ interface AlgoQueue {
 export class SortingComponent implements OnInit, OnDestroy {
 
   // ── Injections ─────────────────────────────────────────────────────────────
-  private readonly websocketService  = inject(WebsocketService);
-  private readonly sanitizer         = inject(DomSanitizer);
+  private readonly websocketService    = inject(WebsocketService);
+  private readonly sanitizer           = inject(DomSanitizer);
   private readonly algoMetadataService = inject(AlgoMetadataService);
 
   // ── Constants ──────────────────────────────────────────────────────────────
-  readonly DATA_TYPES = DATA_TYPES;
+  readonly DATA_TYPES  = DATA_TYPES;
+  readonly VIEW_MODES: { value: ViewMode; label: string }[] = [
+    { value: 'bars',    label: 'Barres'   },
+    { value: 'numbers', label: 'Nombres'  },
+    { value: 'mosaic',  label: 'Mosaïque' },
+  ];
 
   // ── Metadata (from backend) ────────────────────────────────────────────────
   allMetadata  = signal<AlgoMetadata[]>([]);
@@ -74,13 +79,13 @@ export class SortingComponent implements OnInit, OnDestroy {
   instances = signal<AlgoInstance[]>([]);
 
   // ── Private ────────────────────────────────────────────────────────────────
-  private readonly destroy$ = new Subject<void>();
-  private currentArray:     number[] = [];
-  private initialArray:     number[] = [];
-  private algoQueues:       AlgoQueue[] = [];
-  private currentSessionId: string | null = null;
-  private syncScheduled    = false;
-  private syncRetryTimer:   ReturnType<typeof setTimeout> | null = null;
+  private readonly destroy$  = new Subject<void>();
+  private currentArray:      number[] = [];
+  private initialArray:      number[] = [];
+  private algoQueues:        AlgoQueue[] = [];
+  private currentSessionId:  string | null = null;
+  private syncScheduled      = false;
+  private syncRetryTimer:    ReturnType<typeof setTimeout> | null = null;
 
   // ── Computed ───────────────────────────────────────────────────────────────
 
@@ -235,9 +240,11 @@ export class SortingComponent implements OnInit, OnDestroy {
     let arr: number[];
 
     if (this.manualInput() && parsedInput) {
+      // Mode manuel avec saisie valide
       arr = parsedInput.map(value => this.normalizeValue(value));
       this.arraySize.set(arr.length);
-    } else if (!this.manualInput()) {
+    } else {
+      // Mode automatique OU mode manuel sans saisie valide → génération auto
       const min   = this.minValue();
       const max   = this.maxValue();
       const range = max - min;
@@ -248,8 +255,6 @@ export class SortingComponent implements OnInit, OnDestroy {
         if (type === 'double') return parseFloat(raw.toFixed(4));
         return Math.trunc(raw);
       });
-    } else {
-      arr = [];
     }
 
     this.currentArray = arr;
@@ -294,26 +299,29 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   onMinValueChange(value: number): void  { this.minValue.set(value);  this.generateArray(); }
   onMaxValueChange(value: number): void  { this.maxValue.set(value);  this.generateArray(); }
-  incrementMin(delta: number): void      { this.minValue.update(v => v + delta); this.generateArray(); }
-  incrementMax(delta: number): void      { this.maxValue.update(v => v + delta); this.generateArray(); }
-
-  toggleManualInput(): void {
-    this.manualInput.update(value => !value);
-    this.generateArray();
-  }
+  incrementMin(delta: number): void      { this.minValue.update(value => value + delta); this.generateArray(); }
+  incrementMax(delta: number): void      { this.maxValue.update(value => value + delta); this.generateArray(); }
 
   // ── Mode toggles ───────────────────────────────────────────────────────────
 
+  /**
+   * Switch le mode comparaison.
+   * En mode solo → comparaison : on garde tous les algos sélectionnés et on réinitialise.
+   * En mode comparaison → solo : on ne garde que le premier algo sélectionné et on réinitialise.
+   */
   toggleComparisonMode(): void {
     if (this.isRunning()) return;
-    const isNowComparison = !this.comparisonMode();
-    this.comparisonMode.set(isNowComparison);
-    if (!isNowComparison) {
+    
+    this.selectedCodeAlgo.set(null);
+
+    if (!this.comparisonMode()) {
+      // Retour en solo : ne garder que le premier algo
       const firstAlgo = this.selectedAlgos()[0];
       this.selectedAlgos.set([firstAlgo]);
-      this.rebuildInstances(this.currentArray);
     }
-    if (isNowComparison) this.selectedCodeAlgo.set(null);
+
+    // Réinitialiser l'array dans les deux cas pour repartir d'un état propre
+    this.generateArray();
   }
 
   toggleAlgo(algoName: string): void {
@@ -335,8 +343,8 @@ export class SortingComponent implements OnInit, OnDestroy {
     this.rebuildInstances(this.currentArray);
   }
 
-  toggleSidebar(): void  { this.sidebarOpen.update(value => !value); }
-  toggleViewMode(): void { this.viewMode.update(mode => mode === 'bars' ? 'numbers' : 'bars'); }
+  toggleSidebar(): void               { this.sidebarOpen.update(value => !value); }
+  selectViewMode(mode: ViewMode): void { this.viewMode.set(mode); }
 
   toggleCodePanel(algoName: string): void {
     this.selectedCodeAlgo.update(current => current === algoName ? null : algoName);
@@ -408,6 +416,7 @@ export class SortingComponent implements OnInit, OnDestroy {
       this.websocketService.send('/app/session.stop', this.currentSessionId);
     }
     if (this.isRunning()) return;
+    this.isPaused.set(false);
     this.outputNumbers.set([]);
     this.rebuildInstances(this.currentArray);
     this.isRunning.set(true);

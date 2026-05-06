@@ -124,6 +124,18 @@
   scrollbar-color: #333 transparent;
 }
 
+/* ── Zone mosaïque ── */
+.mosaic-area {
+  flex: 1;
+  overflow: hidden;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(var(--mosaic-cols, 10), 1fr);
+  gap: 2px;
+  align-content: start;
+  overflow-y: scroll;
+}
+
 /* ── Done banner ── */
 .done-banner {
   position: absolute;
