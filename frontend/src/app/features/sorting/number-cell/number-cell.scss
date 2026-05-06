@@ -1,0 +1,41 @@
+.number-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  background-color: var(--color-bar);
+  color: var(--text-subtle);
+  border: 1px solid var(--border);
+  transition: background 0.05s, color 0.05s, border-color 0.05s;
+  white-space: nowrap;
+  min-width: 32px;
+
+
+  &.state-compare {
+    background: rgba(var(--accent-2-rgb), 1);
+    color: var(--text);
+    border-color: rgba(var(--accent-2-rgb), 1);
+  }
+
+  &.state-swap {
+    background: rgba(var(--accent-rgb), 1);
+    color: var(--text);
+    border-color: rgba(var(--accent-rgb), 1);
+  }
+
+  &.state-pivot {
+    background: rgba(244, 168, 54, 1);
+    color: var(--text);
+    border-color: rgba(244, 168, 54, 1);
+  }
+
+  &.state-sorted {
+    background: rgba(var(--danger-rgb), 1);
+    color: var(--text-subtle);
+    border-color: var(--border);
+  }
+}

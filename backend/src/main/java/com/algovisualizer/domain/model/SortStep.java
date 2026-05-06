@@ -4,5 +4,5 @@ public record SortStep(
         StepType type,
         int indexA,
         int indexB,
-        int[] stateSnapshot
+        double[] stateSnapshot
 ) {}

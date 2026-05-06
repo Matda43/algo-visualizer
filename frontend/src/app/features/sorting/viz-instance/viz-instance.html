@@ -1,0 +1,68 @@
+<div class="viz-wrapper">
+
+  <!-- Barre de stats -->
+  <div class="stats-bar">
+    <span class="algo-name">{{ instance().name }}</span>
+    <div class="stats-divider"></div>
+    <div class="stats-row">
+      <app-stat-badge label="Comp."     [value]="instance().comparisons" color="compare"  />
+      <app-stat-badge label="Éch."      [value]="instance().swaps"       color="swap"     />
+      <app-stat-badge label="Pivots"    [value]="instance().pivots"      color="pivot"    />
+      <app-stat-badge label="Triés"     [value]="instance().sortedCount" color="sorted"   />
+      <app-stat-badge label="Non triés" [value]="unsortedCount()"        color="unsorted" />
+    </div>
+  </div>
+
+  @switch (viewMode()) {
+
+    @case ('bars') {
+      <div class="bars-area">
+        <div class="y-axis">
+          @for (tick of yTicks(); track tick.pct) {
+            <div class="y-tick" [style.bottom.%]="tick.pct">
+              <span class="y-label">{{ tick.value | number:'1.0-1' }}</span>
+              <div class="y-line" [class.y-line-zero]="isZeroTick(tick.value)"></div>
+            </div>
+          }
+        </div>
+        <div class="bars-container">
+          @for (bar of instance().bars; track $index) {
+            <app-sorting-bar
+              [bar]="bar"
+              [height]="barLayout(bar.value).height"
+              [bottom]="barLayout(bar.value).bottom" />
+          }
+        </div>
+      </div>
+    }
+
+    @case ('numbers') {
+      <div class="numbers-area">
+        @for (bar of instance().bars; track $index) {
+          <app-number-cell [bar]="bar" [dataType]="dataType()" />
+        }
+      </div>
+    }
+
+    @case ('mosaic') {
+      <div class="mosaic-area" [style.--mosaic-cols]="mosaicCols()">
+        @for (bar of instance().bars; track $index) {
+          <app-mosaic-cell
+            [bar]="bar"
+            [minValue]="mosaicMin()"
+            [maxValue]="mosaicMax()" />
+        }
+      </div>
+    }
+
+  }
+
+  <!-- Badge "Terminé" -->
+  @if (instance().done) {
+    <div class="done-banner">
+      <span class="done-check">✓</span>
+      <span>TERMINÉ</span>
+    </div>
+  }
+
+</div>

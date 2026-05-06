@@ -20,16 +20,18 @@ public class StepBroadcasterService {
         this.template = template;
     }
 
-    public void stream(List<SortStep> steps, String topic) {
+    public void stream(List<SortStep> steps, String topic, String sessionId) {
         CompletableFuture.runAsync(() -> {
             try {
                 for (SortStep step : steps) {
                     template.convertAndSend(topic, step);
-                    int delay = speedMap.getOrDefault(topic, new AtomicInteger(100)).get();
-                    Thread.sleep(delay);
+                    int delay = speedMap.getOrDefault(sessionId, new AtomicInteger(100)).get();
+                    if (delay > 0) Thread.sleep(delay);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+            } finally {
+                cleanup(sessionId);
             }
         });
     }

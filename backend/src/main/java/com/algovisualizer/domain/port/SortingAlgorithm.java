@@ -1,11 +1,13 @@
 package com.algovisualizer.domain.port;
 
+import com.algovisualizer.domain.model.AlgoMetadata;
 import com.algovisualizer.domain.model.SortStep;
-import java.util.List;
+
+import java.util.function.Consumer;
 
 public interface SortingAlgorithm {
-    List<SortStep> generateSteps(int[] array);
+
+    void generateSteps(double[] array, Consumer<SortStep> emitter);
     String getName();
-    String getComplexity();
-    String getWorstCase();
+    AlgoMetadata getMetadata();
 }
