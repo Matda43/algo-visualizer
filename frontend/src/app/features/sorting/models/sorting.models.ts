@@ -1,7 +1,14 @@
-export type ViewMode = 'bars' | 'numbers' | 'mosaic';
-export type DataType = 'int' | 'long' | 'float' | 'double' | 'char' | 'string';
+import { SelectOption } from "../../../shared/select-option/select-option";
 
-export const DATA_TYPES: DataType[] = ['int', 'long', 'float', 'double', 'char', 'string'];
+export function buildOptionType<T extends string>(types: T[]): SelectOption<T>[] {
+  return types.map(type => ({ label: type, value: type }));
+}
+
+export type ViewMode = 'bars' | 'numbers' | 'mosaic';
+export const VIEW_MODES = ['bars', 'numbers', 'mosaic'];
+
+export type DataType = 'int' | 'long' | 'float' | 'double';
+export const DATA_TYPES = ['int', 'long', 'float', 'double'];
 
 export interface Bar {
   value: number;

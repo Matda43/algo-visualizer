@@ -1,4 +1,5 @@
 import { Component, input, model } from '@angular/core';
+import { coerceBoolean, coerceString } from '../utils/coerce.utils';
 
 @Component({
   selector: 'app-toggle-switch',
@@ -7,12 +8,14 @@ import { Component, input, model } from '@angular/core';
   styleUrl: './toggle-switch.scss',
 })
 export class ToggleSwitchComponent {
-  active   = model<boolean>(false);
-  disabled = input<boolean>(false);
-  label    = input<string>('');
+  
+  active = model<boolean>(false);
+  disabled = input(false, { transform: (v: unknown) => coerceBoolean(v) });
+  label = input('', { transform: (v: unknown) => coerceString(v) });
+  title = input('', { transform: (v: unknown) => coerceString(v) })
 
   toggle(): void {
-    if (this.disabled()) return;
-    this.active.update(value => !value);
+    if (!this.disabled())
+      this.active.update(value => !value);
   }
 }

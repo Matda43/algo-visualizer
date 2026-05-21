@@ -1,0 +1,63 @@
+<div class="bottom-bar">
+  <span class="bar-label">Grille</span>
+
+  <app-toggle-switch
+    [label]="'Diagonales'"
+    [(active)]="allowDiagonal"
+    [disabled]="disabled()" />
+
+  <app-number-input
+    [label]="'Lignes'"
+    [canDec]="true"
+    [decDisabled]="disabled() || rows() <= rowsMin()"
+    [decTitle]="'Diminuer les lignes'"
+    (decClicked)="decrementRows()"
+    [value]="rows()"
+    [valueMin]="rowsMin()"
+    [valueMax]="rowsMax()"
+    [valueDisabled]="disabled()"
+    [valueLabel]="'Nombre de lignes'"
+    (valueChanged)="rowsChanged.emit($event)"
+    [canInc]="true"
+    [incDisabled]="disabled() || rows() >= rowsMax()"
+    [incTitle]="'Augmenter les lignes'"
+    (incClicked)="incrementRows()" />
+
+  <app-number-input
+    [label]="'Colonnes'"
+    [canDec]="true"
+    [decDisabled]="disabled() || cols() <= colsMin()"
+    [decTitle]="'Diminuer les colonnes'"
+    (decClicked)="decrementCols()"
+    [value]="cols()"
+    [valueMin]="colsMin()"
+    [valueMax]="colsMax()"
+    [valueDisabled]="disabled()"
+    [valueLabel]="'Nombre de colonnes'"
+    (valueChanged)="colsChanged.emit($event)"
+    [canInc]="true"
+    [incDisabled]="disabled() || cols() >= colsMax()"
+    [incTitle]="'Augmenter les colonnes'"
+    (incClicked)="incrementCols()" />
+
+  <app-character-button
+    [label]="'Réinit.'"
+    [disabled]="disabled()"
+    (clicked)="resetClicked.emit()"
+    [title]="'Réinitialiser le chemin'"
+    [character]="'↺'" />
+
+  <app-character-button
+    [label]="'Vider'"
+    [disabled]="disabled()"
+    (clicked)="clearClicked.emit()"
+    [title]="'Vider la grille'"
+    [character]="'✕'" />
+
+  <app-character-button
+    [label]="'Labyrinthe'"
+    [disabled]="disabled()"
+    (clicked)="mazeClicked.emit()"
+    [title]="'Générer un labyrinthe'"
+    [character]="'⊞'" />
+</div>

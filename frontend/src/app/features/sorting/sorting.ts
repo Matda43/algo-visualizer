@@ -1,13 +1,13 @@
 import { Component, OnDestroy, OnInit, signal, computed, inject } from '@angular/core';
 import { Subject, Subscription, timer, takeUntil } from 'rxjs';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { WebsocketService } from '../../core/websocket';
 import { AlgoMetadataService } from './services/algo-metadata.service';
 import { AlgoMetadata } from './models/algo-metadata.model';
-import { AlgoInstance, Bar, SortStep, ExecuteResult, DATA_TYPES, DataType, ViewMode } from './models/sorting.models';
+import { AlgoInstance, Bar, SortStep, ExecuteResult, DATA_TYPES, DataType, ViewMode, buildOptionType, VIEW_MODES } from './models/sorting.models';
 import { VizInstanceComponent } from './viz-instance/viz-instance';
-import { ToggleSwitchComponent } from '../../shared/toggle-switch/toggle-switch';
-import { ComplexityGridComponent } from '../../shared/complexity-grid/complexity-grid';
+import { AlgorithmInformationPanelComponent } from "../../shared/algorithm-information-panel/algorithm-information-panel";import { AlgorithmListPanelComponent } from "../../shared/algorithm-list-panel/algorithm-list-panel";
+import { DynamicControlsComponent } from "../../shared/dynamic-controls/dynamic-controls";
+import { ControlConfig } from '../../shared/control-config.model';
 
 export type CodeLanguage = string;
 
@@ -23,7 +23,7 @@ interface AlgoQueue {
 @Component({
   selector:    'app-sorting',
   standalone:  true,
-  imports:     [VizInstanceComponent, ToggleSwitchComponent, ComplexityGridComponent],
+  imports: [VizInstanceComponent, AlgorithmInformationPanelComponent, AlgorithmListPanelComponent, DynamicControlsComponent],
   templateUrl: './sorting.html',
   styleUrl:    './sorting.scss',
 })
@@ -31,16 +31,132 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   // ── Injections ─────────────────────────────────────────────────────────────
   private readonly websocketService    = inject(WebsocketService);
-  private readonly sanitizer           = inject(DomSanitizer);
   private readonly algoMetadataService = inject(AlgoMetadataService);
 
   // ── Constants ──────────────────────────────────────────────────────────────
-  readonly DATA_TYPES  = DATA_TYPES;
-  readonly VIEW_MODES: { value: ViewMode; label: string }[] = [
-    { value: 'bars',    label: 'Barres'   },
-    { value: 'numbers', label: 'Nombres'  },
-    { value: 'mosaic',  label: 'Mosaïque' },
-  ];
+  readonly ARRAY_MAX_SIZE: number = 1000;
+  readonly ARRAY_MIN_SIZE: number = 2;
+  readonly OFFSET_VALUE: number = 10;
+
+  paramsControls = computed((): ControlConfig[] => [
+    {
+      type: 'select',
+      label: 'Affichage',
+      title: 'Mode d\'affichage',
+      value: this.viewMode(),
+      options: buildOptionType(VIEW_MODES),
+      valueChanged: (value: string) => this.selectViewMode(value),
+      disabled: this.isRunning() || this.isPaused()
+    },
+    {
+      type: 'slider',
+      label: 'Délai',
+      title: 'Délai en millisecondes',
+      description: 'Rapide → Lent',
+      value: this.speedMs(),
+      unit: 'ms',
+      valueMin: 1,
+      valueMax: 500,
+      valueChanged: (value: number) => this.onSpeedChange(value),
+    }
+  ]);
+  inputControls = computed((): ControlConfig[] => [
+    {
+      type: 'select',
+      label: 'Type',
+      title: 'Type de données',
+      value: this.selectedDataType(),
+      options: buildOptionType(DATA_TYPES),
+      valueChanged: (value: string) => this.selectDataType(value),
+      disabled: this.isRunning() || this.isPaused()
+    },
+    {
+      type: 'toggle',
+      label: this.manualInput() ? 'Manuel' : 'Auto.',
+      active: this.manualInput(),
+      activeChange: (v) => this.manualInput.set(v),
+      disabled: this.isRunning() || this.isPaused()
+    },
+    {
+      type: 'input',
+      label: 'Données',
+      title: 'Valeurs à trier',
+      placeholder: 'Ex: 5, 3, 8, 1 (virgule ou espace)',
+      value: this.userInputRaw(),
+      valueChanged: (value: string) => this.userInputRaw.set(value),
+      blured: () => this.generateArray(),
+      disabled: this.isRunning() || this.isPaused(),
+      hidden: !this.manualInput()
+    },
+    {
+      type: 'character-button',
+      label: 'Régén.',
+      title: 'Régénérer',
+      character: '⟳',
+      clicked: () => this.generateArray(),
+      disabled: this.isRunning() || this.isPaused(),
+      hidden: this.manualInput()
+    },
+    {
+      type: 'character-button',
+      label: 'Réinit.',
+      title: 'Réinitialiser',
+      character: '↺',
+      clicked: () => this.reinitialize(),
+      disabled: this.isRunning() || this.isPaused(),
+      hidden: this.manualInput()
+    },
+    {
+      type: 'number-input',
+      label: 'Taille',
+      title: 'Taille du tableau',
+      canDec: true,
+      decTitle: 'Diminuer la taille',
+      decClicked: () => this.decrementSize(),
+      decDisabled: this.arraySize() <= this.ARRAY_MIN_SIZE,
+      valueMin: this.ARRAY_MIN_SIZE,
+      value: this.arraySize(),
+      valueMax: this.ARRAY_MAX_SIZE,
+      valueChanged: (value: number) => this.onArraySizeInput(value),
+      canInc: true,
+      incTitle: 'Augmenter la taille',
+      incClicked: () => this.incrementSize(),
+      incDisabled: this.arraySize() >= this.ARRAY_MAX_SIZE,
+      disabled: this.isRunning() || this.isPaused(),
+      hidden: this.manualInput()
+    },
+    {
+      type: 'number-input',
+      label: 'Min',
+      title: 'Valeur minimale',
+      canDec: true,
+      decTitle: 'Diminuer la limite minimale',
+      decClicked: () => this.decrementMin(),
+      value: this.minValue(),
+      valueChanged: (value: number) => this.onMinValueChange(value),
+      canInc: true,
+      incTitle: 'Augmenter la limite minimale',
+      incClicked: () => this.incrementMin(),
+      disabled: this.isRunning() || this.isPaused(),
+      hidden: this.manualInput()
+    },
+    {
+      type: 'number-input',
+      label: 'Max',
+      title: 'Valeur maximale',
+      canDec: true,
+      decTitle: 'Diminuer la limite maximale',
+      decClicked: () => this.decrementMax(),
+      value: this.maxValue(),
+      valueChanged: (value: number) => this.onMaxValueChange(value),
+      canInc: true,
+      incTitle: 'Augmenter la limite maximale',
+      incClicked: () => this.incrementMax(),
+      disabled: this.isRunning() || this.isPaused(),
+      hidden: this.manualInput()
+    }
+  ]);
+
 
   // ── Metadata (from backend) ────────────────────────────────────────────────
   allMetadata  = signal<AlgoMetadata[]>([]);
@@ -63,7 +179,6 @@ export class SortingComponent implements OnInit, OnDestroy {
   // ── Algo selection ─────────────────────────────────────────────────────────
   selectedAlgos    = signal<string[]>([]);
   selectedCodeAlgo = signal<string | null>(null);
-  selectedLanguage = signal<CodeLanguage>('Java');
   selectedDataType = signal<DataType>('int');
 
   // ── Array params ───────────────────────────────────────────────────────────
@@ -95,24 +210,7 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   showNextStep = computed(() => this.isPaused() && this.isRunning());
 
-  selectedMetadata = computed(() => {
-    const algoName = this.selectedCodeAlgo();
-    if (!algoName) return null;
-    return this.allMetadata().find(meta => meta.name === algoName) ?? null;
-  });
-
-  availableLanguages = computed(() => {
-    const metadata = this.selectedMetadata();
-    if (!metadata) return ['Java', 'Python', 'C++', 'C', 'C#', 'JavaScript', 'PHP'];
-    return Object.keys(metadata.codeByLanguage);
-  });
-
-  codeLines = computed(() => {
-    const metadata = this.selectedMetadata();
-    if (!metadata) return [];
-    const code = metadata.codeByLanguage[this.selectedLanguage()] ?? '';
-    return this.applyDataType(code, this.selectedDataType()).split('\n');
-  });
+  selectedMetadata = computed(() => this.allMetadata().find((meta) => meta.name === this.selectedCodeAlgo()));
 
   parsedInput = computed(() => {
     const rawInput = this.userInputRaw().trim();
@@ -129,6 +227,7 @@ export class SortingComponent implements OnInit, OnDestroy {
       this.allMetadata.set(metadata);
       if (metadata.length > 0) {
         this.selectedAlgos.set([metadata[0].name]);
+        this.selectedCodeAlgo.set(metadata[0].name);
         this.generateArray();
       }
     });
@@ -174,13 +273,6 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
   }
 
-  private applyDataType(code: string, type: DataType): string {
-    if (type === 'int') return code;
-    return code
-      .replace(/\bint(?=\s+\w)/g, type)
-      .replace(/\bint\[\]/g, `${type}[]`);
-  }
-
   private barStateForIndex(
     index: number, step: SortStep, sortedIndices: Set<number>
   ): Bar['state'] {
@@ -209,29 +301,7 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
   }
 
-  highlightLine(line: string): SafeHtml {
-    if (!line.trim()) return this.sanitizer.bypassSecurityTrustHtml('&nbsp;');
-    const escaped = line
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    const highlighted = escaped
-      .replace(/(["'`][^"'`]*["'`])/g,
-        '<span class="hl-string">$1</span>')
-      .replace(/\b(void|bool|boolean|return|if|else|for|while|break|true|false|null|new|class|function|def|let|const|var|static|public|private|import|from|int|float|double|long)\b/g,
-        '<span class="hl-keyword">$1</span>')
-      .replace(/\b(Arrays|Math|count|len|range|intdiv|vector|swap|print|console)\b/g,
-        '<span class="hl-builtin">$1</span>')
-      .replace(/\b(\d+\.?\d*)\b/g,
-        '<span class="hl-number">$1</span>')
-      .replace(/(\/\/.*$)/g,
-        '<span class="hl-comment">$1</span>')
-      .replace(/(#.*$)/g,
-        '<span class="hl-comment">$1</span>')
-      .replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g,
-        '<span class="hl-fn">$1</span>');
-    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
-  }
+  
 
   // ── Array generation ───────────────────────────────────────────────────────
 
@@ -277,8 +347,13 @@ export class SortingComponent implements OnInit, OnDestroy {
     this.generateArray();
   }
 
-  incrementSize(delta: number): void {
-    this.arraySize.update(value => Math.min(1000, Math.max(2, value + delta)));
+  incrementSize(): void {
+    this.arraySize.update(value => Math.min(this.ARRAY_MAX_SIZE, Math.max(this.ARRAY_MIN_SIZE, value + 1)));
+    this.generateArray();
+  }
+
+  decrementSize(): void {
+    this.arraySize.update(value => Math.min(this.ARRAY_MAX_SIZE, Math.max(this.ARRAY_MIN_SIZE, value - 1)));
     this.generateArray();
   }
 
@@ -299,8 +374,22 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   onMinValueChange(value: number): void  { this.minValue.set(value);  this.generateArray(); }
   onMaxValueChange(value: number): void  { this.maxValue.set(value);  this.generateArray(); }
-  incrementMin(delta: number): void      { this.minValue.update(value => value + delta); this.generateArray(); }
-  incrementMax(delta: number): void      { this.maxValue.update(value => value + delta); this.generateArray(); }
+  decrementMin(): void { 
+    this.minValue.update(value => value - this.OFFSET_VALUE); 
+    this.generateArray(); 
+  }
+  incrementMin(): void { 
+    this.minValue.update(value => value + this.OFFSET_VALUE); 
+    this.generateArray(); 
+  }
+  decrementMax(): void { 
+    this.maxValue.update(value => value - this.OFFSET_VALUE);
+    this.generateArray();
+  }
+  incrementMax(): void {
+    this.maxValue.update(value => value + this.OFFSET_VALUE);
+    this.generateArray();
+  }
 
   // ── Mode toggles ───────────────────────────────────────────────────────────
 
@@ -318,6 +407,7 @@ export class SortingComponent implements OnInit, OnDestroy {
       // Retour en solo : ne garder que le premier algo
       const firstAlgo = this.selectedAlgos()[0];
       this.selectedAlgos.set([firstAlgo]);
+      this.selectedCodeAlgo.set(firstAlgo);
     }
 
     // Réinitialiser l'array dans les deux cas pour repartir d'un état propre
@@ -337,24 +427,28 @@ export class SortingComponent implements OnInit, OnDestroy {
     } else {
       if (current[0] === algoName) return;
       this.selectedAlgos.set([algoName]);
-      this.selectedCodeAlgo.set(null);
+      this.selectedCodeAlgo.set(algoName);
     }
 
     this.rebuildInstances(this.currentArray);
   }
 
   toggleSidebar(): void               { this.sidebarOpen.update(value => !value); }
-  selectViewMode(mode: ViewMode): void { this.viewMode.set(mode); }
+  selectViewMode(mode: string): void {
+    if(mode as ViewMode){
+      this.viewMode.set(mode as ViewMode);
+    }
+  }
 
   toggleCodePanel(algoName: string): void {
     this.selectedCodeAlgo.update(current => current === algoName ? null : algoName);
   }
 
-  selectLanguage(lang: CodeLanguage): void { this.selectedLanguage.set(lang); }
-
-  selectDataType(type: DataType): void {
-    this.selectedDataType.set(type);
-    this.generateArray();
+  selectDataType(type: string): void {
+    if(type as DataType){
+      this.selectedDataType.set(type as DataType);
+      this.generateArray();
+    }
   }
 
   // ── Run controls ───────────────────────────────────────────────────────────

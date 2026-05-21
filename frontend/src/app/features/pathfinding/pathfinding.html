@@ -1,0 +1,140 @@
+<div class="page" role="presentation">
+  <div class="layout">
+
+    <!-- ── Sidebar ── -->
+    @if (sidebarOpen()) {
+      <aside class="sidebar">
+
+        <!-- Algorithmes -->
+        <app-algorithm-list-panel
+          [disabled]="isRunning()"
+          [label]="'Algorithme'"
+          [names]="allAlgoNames()"
+          [(namesSelected)]="selectedAlgos"
+          [nameTitle]="'Nom de l\'algorithme'"
+          (nameClickedChange)="selectAlgo($event)" />
+
+        <!-- Outil de dessin -->
+        <div class="sidebar-section">
+          <span class="section-label">Outil</span>
+          <div class="algo-list">
+            @for (tool of DRAW_TOOLS; track tool.mode) {
+              <button class="algo-btn"
+                      [class.is-selected]="drawMode() === tool.mode"
+                      (click)="drawMode.set(tool.mode)">
+                <span class="algo-check" aria-hidden="true">
+                  @if (drawMode() === tool.mode) { ✓ }
+                </span>
+                {{ tool.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+      </aside>
+    }
+
+    <!-- ── Colonne d'actions ── -->
+    <div class="action-col">
+      <button class="action-btn"
+              (click)="sidebarOpen.update(open => !open)"
+              [title]="sidebarOpen() ? 'Fermer' : 'Ouvrir'"
+              [aria-label]="'Basculer la barre latérale'">
+        @if (sidebarOpen()) { ✕ } @else { ☰ }
+      </button>
+
+      <button class="action-btn"
+              (click)="isRunning() ? togglePause() : start()"
+              [title]="isRunning() && !isPaused() ? 'Pause' : 'Démarrer'"
+              [disabled]="!selectedAlgo()"
+              [aria-label]="'Lecture / Pause'">
+        @if (isRunning() && !isPaused()) { ⏸ } @else { ▶ }
+      </button>
+
+      <div class="action-spacer"></div>
+
+      <button class="action-btn action-btn--parameter"
+              [class.is-active]="showParams()"
+              (click)="showParams.update(visible => !visible)"
+              [title]="'Paramètres'">P</button>
+    </div>
+
+    <!-- ── Main ── -->
+    <main class="main">
+
+      <!-- Stats bar -->
+      <div class="path-stats-bar">
+        <span class="algo-label">{{ selectedAlgo() || '—' }}</span>
+        <div class="stats-divider"></div>
+        <div class="stats-row">
+          <app-stat-badge label="Explorées" [value]="stats().visitedCount" color="compare" />
+          <app-stat-badge label="Chemin"    [value]="stats().pathLength"   color="pivot"   />
+          @if (stats().pathFound !== null) {
+            <div class="stat-badge-result">
+              @if (stats().pathFound) {
+                <span class="badge badge--done">Trouvé</span>
+              } @else {
+                <span class="badge badge--not-found">Impossible</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Grille -->
+      <div class="grid-wrapper" (mouseleave)="onMouseUp()">
+        <div class="grid"
+             [style.--grid-cols]="cols()"
+             [style.--grid-rows]="rows()">
+          @for (cell of grid(); track cellKey(cell)) {
+            <div class="cell"
+                 [class]="'cell--' + cell.state"
+                 (mousedown)="onCellMouseDown(cell)"
+                 (mouseenter)="onCellMouseEnter(cell)"
+                 (mouseup)="onMouseUp()">
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Barre Paramètres -->
+      @if (showParams()) {
+        <div class="bottom-bar">
+          <span class="bar-label">Paramètres</span>
+          <app-slider
+            [label]="'Délai'"
+            [title]="'Délai en millisecondes'"
+            [description]="'Rapide → Lent'"
+            [value]="speedMs()"
+            [unit]="'ms'"
+            [valueMin]="1"
+            [valueMax]="200"
+            (valueChanged)="onSpeedChange($event)" />
+        </div>
+      }
+
+      <!-- Barre Grille -->
+      <app-pathfinding-grid-controls
+        [(allowDiagonal)]="allowDiagonal"
+        [rows]="rows()"
+        [rowsMin]="ROWS_MIN"
+        [rowsMax]="ROWS_MAX"
+        (rowsChanged)="onRowsChange($event)"
+        [cols]="cols()"
+        [colsMin]="COLS_MIN"
+        [colsMax]="COLS_MAX"
+        (colsChanged)="onColsChange($event)"
+        [disabled]="isRunning()"
+        (resetClicked)="resetPath()"
+        (clearClicked)="clearGrid()"
+        (mazeClicked)="generateMaze()" />
+
+    </main>
+
+    <!-- ── Panneau d'information (droite) ── -->
+    @if (selectedMetadata(); as meta) {
+      <app-pathfinding-information-panel [metadata]="meta" />
+    }
+
+  </div>
+</div>

@@ -35,22 +35,22 @@
         </div>
       </div>
     }
-
     @case ('numbers') {
       <div class="numbers-area">
         @for (bar of instance().bars; track $index) {
-          <app-number-cell [bar]="bar" [dataType]="dataType()" />
+          <app-number-cell 
+            [bar]="bar" 
+            [dataType]="dataType()"/>
         }
       </div>
     }
-
     @case ('mosaic') {
       <div class="mosaic-area" [style.--mosaic-cols]="mosaicCols()">
         @for (bar of instance().bars; track $index) {
           <app-mosaic-cell
             [bar]="bar"
             [minValue]="mosaicMin()"
-            [maxValue]="mosaicMax()" />
+            [maxValue]="mosaicMax()"/>
         }
       </div>
     }

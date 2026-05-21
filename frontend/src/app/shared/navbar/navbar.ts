@@ -18,7 +18,7 @@ interface NavItem {
 export class NavbarComponent {
   navItems = signal<NavItem[]>([
     { path: '/sorting',     label: 'Tri',          available: true  },
-    { path: '/pathfinding', label: 'Pathfinding',   tag: 'Bientôt',  available: false },
+    { path: '/pathfinding', label: 'Pathfinding',  available: true  },
     { path: '/compare',     label: 'Comparaison',   tag: 'Bientôt',  available: false },
   ]);
 }

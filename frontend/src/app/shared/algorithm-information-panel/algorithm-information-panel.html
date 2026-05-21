@@ -1,0 +1,36 @@
+<aside class="code-panel">
+  <div class="code-panel-header">
+    <span class="code-panel-title">{{ metaData().name }}</span>
+  </div>
+
+  <app-complexity-grid [metadata]="metaData()" />
+
+  <div class="code-description">
+    <p class="description-text">{{ metaData().description }}</p>
+    <a 
+      class="description-link" 
+      [href]="metaData().wikipediaUrl" 
+      target="_blank" 
+      rel="noopener noreferrer">
+      Voir sur Wikipédia ↗
+    </a>
+  </div>
+
+  <div class="code-controls">
+    <app-select-option 
+      [value]="selectedLanguage()" 
+      [options]="availableLanguages()"
+      (valueChanged)="selectLanguage($event)" 
+      [title]="'Langage'"/>
+  </div>
+
+  <div class="code-body">
+    @for (line of codeLines(); track $index) {
+      <div class="code-line">
+        <span class="line-number" aria-hidden="true">{{ $index + 1 }}</span>
+        <span class="line-content" [innerHTML]="highlightLine(line)"></span>
+      </div>
+    }
+  </div>
+
+</aside>

@@ -1,0 +1,15 @@
+<div class="section">
+    @if(label()){
+        <span class="param-label">{{ label() }}</span>
+    }
+    <textarea 
+    class="input"
+    [rows]="rows()"
+    [placeholder]="placeholder()"
+    [title]="title()"
+    [value]="value()"
+    [disabled]="disabled()"
+    (input)="valueChange($any($event.target).value)"
+    (blur)="blur()"
+    [aria-label]="title()"></textarea>
+</div>

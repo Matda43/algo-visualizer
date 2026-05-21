@@ -1,0 +1,26 @@
+/* ── Bottom bars ── */
+.bottom-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-light);
+  min-height: 46px;
+  flex-wrap: wrap;
+
+  &--output {
+    background: var(--border-light);
+  }
+}
+
+.bar-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  flex-shrink: 0;
+}
