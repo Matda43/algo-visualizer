@@ -1,5 +1,6 @@
 import { Component, input, output } from "@angular/core";
 import { clampNumber, coerceBoolean, coerceNumber, coerceString } from "../../../utils/coerce.utils";
+import { BaseHTMLElementPropertiesComponent } from "../../../base-html-element-properties";
 
 @Component({
   selector:    'app-number-input',
@@ -8,11 +9,7 @@ import { clampNumber, coerceBoolean, coerceNumber, coerceString } from "../../..
   templateUrl: './number-input.html',
   styleUrl:    './number-input.scss',
 })
-export class NumberInputComponent {
-
-  // ── Label ──
-  label = input('', { transform: (v: unknown) => coerceString(v) });
-  disabled = input(false, { transform: coerceBoolean });
+export class NumberInputComponent extends BaseHTMLElementPropertiesComponent {
 
   // ── Decrement ──
   canDec = input(false, { transform: coerceBoolean });
@@ -26,7 +23,6 @@ export class NumberInputComponent {
   valueMax = input(Number.MAX_VALUE, { transform: (v: unknown) => coerceNumber(v, Number.MAX_VALUE) });
   valueDisabled = input(false, { transform: coerceBoolean });
   valueChanged = output<number>();
-  valueLabel = input('', { transform: (v: unknown) => coerceString(v) });
   valueStyle = input('', { transform: (v: unknown) => coerceString(v) })
 
   // ── Increment ──

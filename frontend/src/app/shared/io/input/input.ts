@@ -1,5 +1,6 @@
 import { Component, input, output } from "@angular/core";
-import { coerceBoolean, coerceNumber, coerceString } from "../../utils/coerce.utils";
+import { coerceNumber, coerceString } from "../../utils/coerce.utils";
+import { BaseHTMLElementPropertiesComponent } from "../../base-html-element-properties";
 
 @Component({
   selector:    'app-input',
@@ -8,18 +9,13 @@ import { coerceBoolean, coerceNumber, coerceString } from "../../utils/coerce.ut
   templateUrl: './input.html',
   styleUrl:    './input.scss',
 })
-export class InputComponent {
-
-  // ── Label ──
-  label = input('', { transform: (v: unknown) => coerceString(v) });
-  title = input('', { transform: (v: unknown) => coerceString(v) });
+export class InputComponent extends BaseHTMLElementPropertiesComponent {
 
   // ── Value ──
   value = input('', { transform: (v: unknown) => coerceString(v) });
 
   // ── Button ──
   rows = input(1, { transform: (v: unknown) => coerceNumber(v, 1) });
-  disabled = input(false, { transform: coerceBoolean });
   placeholder = input('', { transform: (v: unknown) => coerceString(v) });
   valueChanged = output<string>();
   blured = output<void>();

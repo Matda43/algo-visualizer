@@ -18,9 +18,10 @@
       [value]="value()"
       [min]="valueMin()"
       [max]="valueMax()"
+      [title]="title()"
       [disabled]="valueDisabled() || disabled()"
       (change)="valueChange(+$any($event.target).value)"
-      [aria-label]="valueLabel()"
+      [aria-label]="title()"
       [style]="valueStyle()"
     />
     @if(canInc()) {

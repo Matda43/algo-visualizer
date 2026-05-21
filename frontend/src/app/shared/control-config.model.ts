@@ -34,7 +34,7 @@ export interface InputControlConfig extends BaseControlConfig {
   value: string;
   placeholder?: string;
   rows?: number;
-  valueChanged: (value: string) => void;
+  valueChanged?: (value: string) => void;
   blured?: () => void;
 }
 

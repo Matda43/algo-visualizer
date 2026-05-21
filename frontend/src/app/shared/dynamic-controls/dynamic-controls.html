@@ -1,78 +1,96 @@
 <div class="bottom-bar">
   @if(label()){
-    <span class="bar-label">{{ label() }}</span>
+    <div class="container-controls--label">
+      <span class="bar-label">{{ label() }}</span>
+    </div>
   }
-  @for (control of controls(); track $index) {
-    @if (!control.hidden) {
-      @switch (control.type) {
-        @case ('select') {
-          <app-select-option
-            [label]="control.label"
-            [value]="control.value"
-            [options]="control.options"
-            [title]="control.title"
-            [disabled]="control.disabled"
-            (valueChanged)="control.valueChanged($event)"
-          />
-        }
-        @case ('toggle') {
-          <app-toggle-switch
-            [label]="control.label"
-            [active]="control.active"
-            [disabled]="control.disabled"
-            (activeChange)="control.activeChange($event)"
-          />
-        }
-        @case ('input') {
-          <app-input
-            [label]="control.label"
-            [value]="control.value"
-            [rows]="control.rows"
-            [placeholder]="control.placeholder"
-            [disabled]="control.disabled"
-            (valueChanged)="control.valueChanged($event)"
-            (blured)="control.blured?.()"
-          />
-        }
-        @case ('character-button') {
-          <app-character-button
-            [label]="control.label"
-            [character]="control.character"
-            [disabled]="control.disabled"
-            (clicked)="control.clicked()"
-          />
-        }
-        @case ('number-input') {
-          <app-number-input
-            [label]="control.label"
-            [disabled]="control.disabled"
-            [value]="control.value"
-            [valueMin]="control.valueMin"
-            [valueMax]="control.valueMax"
-            [valueDisabled]="control.valueDisabled"
-            [canDec]="control.canDec"
-            [canInc]="control.canInc"
-            [decDisabled]="control.decDisabled"
-            [incDisabled]="control.incDisabled"
-            (decClicked)="control.decClicked?.()"
-            (incClicked)="control.incClicked?.()"
-            (valueChanged)="control.valueChanged($event)"
-          />
-        }
-        @case ('slider') {
-          <app-slider
-            [label]="control.label"
-            [value]="control.value"
-            [valueMin]="control.valueMin"
-            [valueMax]="control.valueMax"
-            [unit]="control.unit"
-            [title]="control.title"
-            [description]="control.description"
-            [disabled]="control.disabled"
-            (valueChanged)="control.valueChanged($event)"
-          />
+  @if(controls() && controls().length > 0){
+    <div class="container-controls">
+      @for (controlsRaw of controls(); track $index) {
+        @if(controlsRaw.some(control => !control.hidden)){
+          <div class="container-controls">
+            @for (control of controlsRaw; track $index) {
+              @if (!control.hidden) {
+                @switch (control.type) {
+                  @case ('select') {
+                    <app-select-option
+                      [label]="control.label"
+                      [value]="control.value"
+                      [options]="control.options"
+                      [title]="control.title"
+                      [disabled]="control.disabled"
+                      (valueChanged)="control.valueChanged($event)"
+                    />
+                  }
+                  @case ('toggle') {
+                    <app-toggle-switch
+                      [label]="control.label"
+                      [title]="control.title"
+                      [active]="control.active"
+                      [disabled]="control.disabled"
+                      (activeChange)="control.activeChange($event)"
+                    />
+                  }
+                  @case ('input') {
+                    <div class="container-controls--expand">
+                      <app-input
+                        [label]="control.label"
+                        [title]="control.title"
+                        [value]="control.value"
+                        [rows]="control.rows"
+                        [placeholder]="control.placeholder"
+                        [disabled]="control.disabled"
+                        (valueChanged)="control?.valueChanged($event)"
+                        (blured)="control.blured?.()"
+                      />
+                    </div>
+                  }
+                  @case ('character-button') {
+                    <app-character-button
+                      [label]="control.label"
+                      [title]="control.title"
+                      [character]="control.character"
+                      [disabled]="control.disabled"
+                      (clicked)="control.clicked()"
+                    />
+                  }
+                  @case ('number-input') {
+                    <app-number-input
+                      [label]="control.label"
+                      [disabled]="control.disabled"
+                      [value]="control.value"
+                      [title]="control.title"
+                      [valueMin]="control.valueMin"
+                      [valueMax]="control.valueMax"
+                      [valueDisabled]="control.valueDisabled"
+                      [canDec]="control.canDec"
+                      [canInc]="control.canInc"
+                      [decDisabled]="control.decDisabled"
+                      [incDisabled]="control.incDisabled"
+                      (decClicked)="control.decClicked?.()"
+                      (incClicked)="control.incClicked?.()"
+                      (valueChanged)="control.valueChanged($event)"
+                    />
+                  }
+                  @case ('slider') {
+                    <app-slider
+                      [label]="control.label"
+                      [value]="control.value"
+                      [valueMin]="control.valueMin"
+                      [valueMax]="control.valueMax"
+                      [unit]="control.unit"
+                      [title]="control.title"
+                      [description]="control.description"
+                      [disabled]="control.disabled"
+                      (valueChanged)="control.valueChanged($event)"
+                    />
+                  }
+                }
+              }
+            }
+          </div>
         }
       }
-    }
+    </div>
   }
 </div>

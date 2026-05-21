@@ -1,5 +1,5 @@
 import { Component, input, output } from "@angular/core";
-import { coerceBoolean, coerceString } from "../utils/coerce.utils";
+import { BaseHTMLElementPropertiesComponent } from "../base-html-element-properties";
 
 export interface SelectOption<T = string> {
   label: string;
@@ -13,18 +13,12 @@ export interface SelectOption<T = string> {
   templateUrl: './select-option.html',
   styleUrl:    './select-option.scss',
 })
-export class SelectOptionComponent {
-
-  // ── Label ──
-  label = input('', { transform: (v: unknown) => coerceString(v) });
-  title = input('', { transform: (v: unknown) => coerceString(v) });
+export class SelectOptionComponent extends BaseHTMLElementPropertiesComponent {
 
   // ── Value ──
-  disabled = input(false, { transform: coerceBoolean });
   options = input<SelectOption[]>([]);
   normalizedOptions(): SelectOption[] { 
-    return this.options().map(option => 
-      typeof option === 'string' ? { label: option, value: option } : option ) 
+    return this.options().map(option => typeof option === 'string' ? { label: option, value: option } : option ) 
   };
   value = input<string>();
   valueChanged = output<string>();

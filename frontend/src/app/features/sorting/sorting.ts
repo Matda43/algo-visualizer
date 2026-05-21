@@ -38,123 +38,139 @@ export class SortingComponent implements OnInit, OnDestroy {
   readonly ARRAY_MIN_SIZE: number = 2;
   readonly OFFSET_VALUE: number = 10;
 
-  paramsControls = computed((): ControlConfig[] => [
-    {
-      type: 'select',
-      label: 'Affichage',
-      title: 'Mode d\'affichage',
-      value: this.viewMode(),
-      options: buildOptionType(VIEW_MODES),
-      valueChanged: (value: string) => this.selectViewMode(value),
-      disabled: this.isRunning() || this.isPaused()
-    },
-    {
-      type: 'slider',
-      label: 'Délai',
-      title: 'Délai en millisecondes',
-      description: 'Rapide → Lent',
-      value: this.speedMs(),
-      unit: 'ms',
-      valueMin: 1,
-      valueMax: 500,
-      valueChanged: (value: number) => this.onSpeedChange(value),
-    }
+  paramsControls = computed((): ControlConfig[][] => [
+    [
+      {
+        type: 'select',
+        label: 'Affichage',
+        title: 'Mode d\'affichage',
+        value: this.viewMode(),
+        options: buildOptionType(VIEW_MODES),
+        valueChanged: (value: string) => this.selectViewMode(value),
+        disabled: this.isRunning() || this.isPaused()
+      },
+      {
+        type: 'slider',
+        label: 'Délai',
+        title: 'Délai en millisecondes',
+        description: 'Rapide → Lent',
+        value: this.speedMs(),
+        unit: 'ms',
+        valueMin: 1,
+        valueMax: 500,
+        valueChanged: (value: number) => this.onSpeedChange(value),
+      }
+    ]
   ]);
-  inputControls = computed((): ControlConfig[] => [
-    {
-      type: 'select',
-      label: 'Type',
-      title: 'Type de données',
-      value: this.selectedDataType(),
-      options: buildOptionType(DATA_TYPES),
-      valueChanged: (value: string) => this.selectDataType(value),
-      disabled: this.isRunning() || this.isPaused()
-    },
-    {
-      type: 'toggle',
-      label: this.manualInput() ? 'Manuel' : 'Auto.',
-      active: this.manualInput(),
-      activeChange: (v) => this.manualInput.set(v),
-      disabled: this.isRunning() || this.isPaused()
-    },
-    {
-      type: 'input',
-      label: 'Données',
-      title: 'Valeurs à trier',
-      placeholder: 'Ex: 5, 3, 8, 1 (virgule ou espace)',
-      value: this.userInputRaw(),
-      valueChanged: (value: string) => this.userInputRaw.set(value),
-      blured: () => this.generateArray(),
-      disabled: this.isRunning() || this.isPaused(),
-      hidden: !this.manualInput()
-    },
-    {
-      type: 'character-button',
-      label: 'Régén.',
-      title: 'Régénérer',
-      character: '⟳',
-      clicked: () => this.generateArray(),
-      disabled: this.isRunning() || this.isPaused(),
-      hidden: this.manualInput()
-    },
-    {
-      type: 'character-button',
-      label: 'Réinit.',
-      title: 'Réinitialiser',
-      character: '↺',
-      clicked: () => this.reinitialize(),
-      disabled: this.isRunning() || this.isPaused(),
-      hidden: this.manualInput()
-    },
-    {
-      type: 'number-input',
-      label: 'Taille',
-      title: 'Taille du tableau',
-      canDec: true,
-      decTitle: 'Diminuer la taille',
-      decClicked: () => this.decrementSize(),
-      decDisabled: this.arraySize() <= this.ARRAY_MIN_SIZE,
-      valueMin: this.ARRAY_MIN_SIZE,
-      value: this.arraySize(),
-      valueMax: this.ARRAY_MAX_SIZE,
-      valueChanged: (value: number) => this.onArraySizeInput(value),
-      canInc: true,
-      incTitle: 'Augmenter la taille',
-      incClicked: () => this.incrementSize(),
-      incDisabled: this.arraySize() >= this.ARRAY_MAX_SIZE,
-      disabled: this.isRunning() || this.isPaused(),
-      hidden: this.manualInput()
-    },
-    {
-      type: 'number-input',
-      label: 'Min',
-      title: 'Valeur minimale',
-      canDec: true,
-      decTitle: 'Diminuer la limite minimale',
-      decClicked: () => this.decrementMin(),
-      value: this.minValue(),
-      valueChanged: (value: number) => this.onMinValueChange(value),
-      canInc: true,
-      incTitle: 'Augmenter la limite minimale',
-      incClicked: () => this.incrementMin(),
-      disabled: this.isRunning() || this.isPaused(),
-      hidden: this.manualInput()
-    },
-    {
-      type: 'number-input',
-      label: 'Max',
-      title: 'Valeur maximale',
-      canDec: true,
-      decTitle: 'Diminuer la limite maximale',
-      decClicked: () => this.decrementMax(),
-      value: this.maxValue(),
-      valueChanged: (value: number) => this.onMaxValueChange(value),
-      canInc: true,
-      incTitle: 'Augmenter la limite maximale',
-      incClicked: () => this.incrementMax(),
-      disabled: this.isRunning() || this.isPaused(),
-      hidden: this.manualInput()
-    }
+  inputControls = computed((): ControlConfig[][] => [
+    [
+      {
+        type: 'character-button',
+        label: 'Réinit.',
+        title: 'Réinitialiser',
+        character: '↺',
+        clicked: () => this.reinitialize(),
+        disabled: this.isRunning() || this.isPaused()
+      },
+      {
+        type: 'toggle',
+        label: this.manualInput() ? 'Manuel' : 'Auto.',
+        title: 'Mode de génération',
+        active: this.manualInput(),
+        activeChange: (v) => this.manualInput.set(v),
+        disabled: this.isRunning() || this.isPaused()
+      }
+    ],
+    [
+      {
+        type: 'character-button',
+        label: 'Régén.',
+        title: 'Régénérer',
+        character: '⟳',
+        clicked: () => this.generateArray(),
+        disabled: this.isRunning() || this.isPaused(),
+        hidden: this.manualInput()
+      },
+      {
+        type: 'number-input',
+        label: 'Taille',
+        title: 'Taille du tableau',
+        canDec: true,
+        decTitle: 'Diminuer la taille',
+        decClicked: () => this.decrementSize(),
+        decDisabled: this.arraySize() <= this.ARRAY_MIN_SIZE,
+        valueMin: this.ARRAY_MIN_SIZE,
+        value: this.arraySize(),
+        valueMax: this.ARRAY_MAX_SIZE,
+        valueChanged: (value: number) => this.onArraySizeInput(value),
+        canInc: true,
+        incTitle: 'Augmenter la taille',
+        incClicked: () => this.incrementSize(),
+        incDisabled: this.arraySize() >= this.ARRAY_MAX_SIZE,
+        disabled: this.isRunning() || this.isPaused(),
+        hidden: this.manualInput()
+      },
+      {
+        type: 'number-input',
+        label: 'Min',
+        title: 'Valeur minimale',
+        canDec: true,
+        decTitle: 'Diminuer la limite minimale',
+        decClicked: () => this.decrementMin(),
+        value: this.minValue(),
+        valueChanged: (value: number) => this.onMinValueChange(value),
+        canInc: true,
+        incTitle: 'Augmenter la limite minimale',
+        incClicked: () => this.incrementMin(),
+        disabled: this.isRunning() || this.isPaused(),
+        hidden: this.manualInput()
+      },
+      {
+        type: 'number-input',
+        label: 'Max',
+        title: 'Valeur maximale',
+        canDec: true,
+        decTitle: 'Diminuer la limite maximale',
+        decClicked: () => this.decrementMax(),
+        value: this.maxValue(),
+        valueChanged: (value: number) => this.onMaxValueChange(value),
+        canInc: true,
+        incTitle: 'Augmenter la limite maximale',
+        incClicked: () => this.incrementMax(),
+        disabled: this.isRunning() || this.isPaused(),
+        hidden: this.manualInput()
+      }
+    ],
+    [
+      {
+        type: 'select',
+        label: 'Type',
+        title: 'Type de données',
+        value: this.selectedDataType(),
+        options: buildOptionType(DATA_TYPES),
+        valueChanged: (value: string) => this.selectDataType(value),
+        disabled: this.isRunning() || this.isPaused()
+      },
+      {
+        type: 'input',
+        label: 'Données',
+        title: 'Valeurs à trier',
+        placeholder: 'Ex: 5, 3, 8, 1 (virgule ou espace)',
+        value: this.userInputRaw(),
+        valueChanged: (value: string) => this.userInputRaw.set(value),
+        blured: () => this.generateArray(),
+        disabled: this.isRunning() || this.isPaused(),
+        hidden: !this.manualInput()
+      },
+      {
+        type: 'input',
+        label: 'Données',
+        title: 'Valeurs à trier',
+        value: this.initialArray().join(', '),
+        disabled: true,
+        hidden: this.manualInput()
+      }
+    ]
   ]);
 
 
@@ -196,7 +212,7 @@ export class SortingComponent implements OnInit, OnDestroy {
   // ── Private ────────────────────────────────────────────────────────────────
   private readonly destroy$  = new Subject<void>();
   private currentArray:      number[] = [];
-  private initialArray:      number[] = [];
+  private initialArray       = signal<number[]>([]);
   private algoQueues:        AlgoQueue[] = [];
   private currentSessionId:  string | null = null;
   private syncScheduled      = false;
@@ -328,14 +344,14 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
 
     this.currentArray = arr;
-    this.initialArray = [...arr];
+    this.initialArray.set([...arr]);
     this.outputNumbers.set([]);
     this.rebuildInstances(arr);
   }
 
   reinitialize(): void {
     if (this.isRunning()) return;
-    this.currentArray = [...this.initialArray];
+    this.currentArray = [...this.initialArray()];
     this.outputNumbers.set([]);
     this.rebuildInstances(this.currentArray);
   }

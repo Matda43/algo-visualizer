@@ -1,5 +1,6 @@
 import { Component, input, output } from "@angular/core";
-import { clampNumber, coerceBoolean, coerceNumber, coerceString } from "../utils/coerce.utils";
+import { clampNumber, coerceNumber, coerceString } from "../utils/coerce.utils";
+import { BaseHTMLElementPropertiesComponent } from "../base-html-element-properties";
 
 @Component({
   selector: 'app-slider',
@@ -8,15 +9,12 @@ import { clampNumber, coerceBoolean, coerceNumber, coerceString } from "../utils
   templateUrl: './slider.html',
   styleUrl: './slider.scss',
 })
-export class SliderComponent {
+export class SliderComponent extends BaseHTMLElementPropertiesComponent {
 
   // ── Label ──
-  label = input('', { transform: (v: unknown) => coerceString(v) });
-  title = input('', { transform: (v: unknown) => coerceString(v) });
   description = input('', { transform: (v: unknown) => coerceString(v) });
 
   // ── Value ──
-  disabled = input(false, { transform: coerceBoolean });
   value = input(0, { transform: (v: unknown) => coerceNumber(v) });
   unit = input('', { transform: (v: unknown) => coerceString(v) });
   valueMin = input(Number.MIN_VALUE, { transform: (v: unknown) => coerceNumber(v, Number.MIN_VALUE) });

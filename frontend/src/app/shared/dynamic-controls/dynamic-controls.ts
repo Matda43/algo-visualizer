@@ -24,6 +24,6 @@ import { ControlConfig } from "../control-config.model";
 export class DynamicControlsComponent {
 
   label = input<string>();
-  controls = input.required<ControlConfig[]>();
+  controls = input.required<ControlConfig[][]>();
 
 }
