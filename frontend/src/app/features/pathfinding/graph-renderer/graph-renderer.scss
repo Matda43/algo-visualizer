@@ -1,0 +1,62 @@
+:host { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+.graph-svg {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-light);
+  cursor: default;
+}
+
+/* ── Arêtes ── */
+.edge {
+  stroke: var(--border);
+  stroke-width: 2;
+  fill: none;
+  transition: stroke 0.1s;
+
+  &--path {
+    stroke: var(--color-swap);
+    stroke-width: 3;
+  }
+}
+
+.arrowhead {
+  fill: var(--border);
+  &--path { fill: var(--color-swap); }
+}
+
+.edge-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--text);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Sommets ── */
+.vertex {
+  cursor: pointer;
+  transition: transform 0.12s;
+
+  &:hover { transform-box: fill-box; transform-origin: center; transform: scale(1.08); }
+
+  &--visited .vertex-circle  { fill: rgba(var(--accent-2-rgb), 0.35); stroke: var(--accent-2); }
+  &--frontier .vertex-circle { fill: rgba(var(--accent-2-rgb), 0.7);  stroke: var(--accent-2); }
+  &--path .vertex-circle     { fill: var(--color-swap); stroke: var(--color-swap); }
+}
+
+.vertex-circle {
+  fill: var(--bg-card);
+  stroke: var(--border-hover);
+  stroke-width: 2;
+  transition: fill 0.1s, stroke 0.1s;
+}
+
+.vertex-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  fill: var(--text-subtle);
+  pointer-events: none;
+  user-select: none;
+}

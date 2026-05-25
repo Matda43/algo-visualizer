@@ -1,0 +1,171 @@
+:host {
+  display: flex;
+}
+
+/* ══════════════════════════════════════════════
+   PANEL
+   ══════════════════════════════════════════════ */
+.code-panel {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--bg-light);
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+
+.code-panel-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--danger);
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.code-panel-title {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-align: center;
+}
+
+/* ══════════════════════════════════════════════
+   GRILLE DE MESURES (générique)
+   ══════════════════════════════════════════════ */
+.measures-grid {
+  display: grid;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+
+  &--2 { grid-template-columns: repeat(2, 1fr); }
+  &--3 { grid-template-columns: repeat(3, 1fr); }
+  &--4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.measure-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 4px;
+  border-right: 1px solid var(--border);
+  background-color: var(--bg-card);
+
+  &:last-child { border-right: none; }
+}
+
+.measure-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.measure-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+
+  &.color-best  { color: var(--best);          }
+  &.color-avg   { color: var(--color-pivot);   }
+  &.color-worst { color: var(--danger);         }
+  &.color-space { color: var(--accent-2);       }
+  &.color-info  { color: var(--text-subtle);   }
+}
+
+/* ══════════════════════════════════════════════
+   DESCRIPTION
+   ══════════════════════════════════════════════ */
+.code-description {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: transparent;
+}
+
+.description-text {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.description-link {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--bg-card);
+  text-decoration: none;
+  transition: opacity 0.12s;
+
+  &:hover { opacity: 0.7; }
+}
+
+/* ══════════════════════════════════════════════
+   BLOC CODE
+   ══════════════════════════════════════════════ */
+.code-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.code-body {
+  flex: 1;
+  overflow-y: scroll;
+  padding: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+  background-color: var(--bg-card);
+}
+
+.code-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 1px 14px;
+  line-height: 1.75;
+
+  &:hover { background: rgba(234, 230, 224, 0.02); }
+}
+
+.line-number {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-subtle);
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+  user-select: none;
+  opacity: 0.4;
+}
+
+.line-content {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre;
+  color: var(--text-subtle);
+}
+
+/* ── Syntax highlighting ── */
+:host ::ng-deep .hl-keyword { color: #c792ea; }
+:host ::ng-deep .hl-string  { color: #c3e88d; }
+:host ::ng-deep .hl-number  { color: var(--accent); }
+:host ::ng-deep .hl-comment { color: rgba(234, 230, 224, 0.3); font-style: italic; }
+:host ::ng-deep .hl-builtin { color: var(--accent-2); }
+:host ::ng-deep .hl-fn      { color: var(--accent-2); }

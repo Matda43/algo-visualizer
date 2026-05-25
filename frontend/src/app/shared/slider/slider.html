@@ -1,0 +1,21 @@
+<div class="section section--grow">
+  @if(label()){
+    <span class="param-label">{{ label() }}</span>
+  }
+  <div class="slider-information">
+    <span class="param-value" [class.disabled]="disabled()">{{ value() }} {{ unit() }}</span>
+    <input 
+      class="slider"  
+      type="range" 
+      [min]="valueMin()"
+      [max]="valueMax()"
+      [value]="value()"
+      [title]="title()"
+      [disabled]="disabled()"
+      (input)="valueChange(+$any($event.target).value)"
+      [aria-label]="title()">
+    @if(description()){
+      <span class="slider-hint">{{ description() }}</span>
+    }
+  </div>
+</div>

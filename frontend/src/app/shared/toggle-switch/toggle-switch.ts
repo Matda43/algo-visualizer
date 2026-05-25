@@ -1,4 +1,5 @@
-import { Component, input, model } from '@angular/core';
+import { Component, model } from '@angular/core';
+import { BaseHTMLElementPropertiesComponent } from '../base-html-element-properties';
 
 @Component({
   selector: 'app-toggle-switch',
@@ -6,13 +7,13 @@ import { Component, input, model } from '@angular/core';
   templateUrl: './toggle-switch.html',
   styleUrl: './toggle-switch.scss',
 })
-export class ToggleSwitchComponent {
-  active   = model<boolean>(false);
-  disabled = input<boolean>(false);
-  label    = input<string>('');
+export class ToggleSwitchComponent extends BaseHTMLElementPropertiesComponent {
+  
+  active = model<boolean>(false);
 
   toggle(): void {
-    if (this.disabled()) return;
-    this.active.update(value => !value);
+    if (!this.disabled()){
+      this.active.update(value => !value);
+    }
   }
 }

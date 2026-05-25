@@ -1,0 +1,131 @@
+<div class="page" role="presentation">
+  <div class="layout">
+
+    <!-- ── Sidebar ── -->
+    @if (sidebarOpen()) {
+      <aside class="sidebar">
+        <app-algorithm-list-panel
+          [disabled]="isRunning()"
+          [label]="'Algorithme'"
+          [names]="allAlgoNames()"
+          [(namesSelected)]="selectedAlgos"
+          [nameTitle]="'Nom de l\'algorithme'"
+          (nameClickedChange)="selectAlgo($event)" />
+      </aside>
+    }
+
+    <!-- ── Colonne d'actions ── -->
+    <div class="action-col">
+      <button class="action-btn"
+              (click)="sidebarOpen.update(v => !v)"
+              [title]="sidebarOpen() ? 'Fermer' : 'Ouvrir'"
+              aria-label="Basculer la barre latérale">
+        @if (sidebarOpen()) { ✕ } @else { ☰ }
+      </button>
+
+      @if (viewMode() === 'grid') {
+        <button class="action-btn"
+                (click)="isRunning() ? togglePause() : start()"
+                [title]="isRunning() && !isPaused() ? 'Pause' : 'Démarrer'"
+                [disabled]="!selectedAlgo()"
+                aria-label="Lecture / Pause">
+          @if (isRunning() && !isPaused()) { ⏸ } @else { ▶ }
+        </button>
+      }
+
+      <div class="action-spacer"></div>
+
+      <button class="action-btn action-btn--parameter"
+              [class.is-active]="showParams()"
+              (click)="showParams.update(v => !v)"
+              title="Paramètres">P</button>
+      <button class="action-btn action-btn--parameter"
+              [class.is-active]="showInput()"
+              (click)="showInput.update(v => !v)"
+              title="Entrée">I</button>
+    </div>
+
+    <!-- ── Main ── -->
+    <main class="main">
+
+      <!-- Stats bar (grille uniquement) -->
+      @if (viewMode() === 'grid') {
+        <div class="path-stats-bar">
+          <span class="algo-label">{{ selectedAlgo() || '—' }}</span>
+          <div class="stats-divider"></div>
+          <div class="stats-row">
+            <app-stat-badge label="Explorées" [value]="stats().visitedCount" color="compare" />
+            <app-stat-badge label="Chemin"    [value]="stats().pathLength"   color="pivot"   />
+            @if (stats().pathFound !== null) {
+              <div class="stat-badge-result">
+                @if (stats().pathFound) {
+                  <span class="badge badge--done">Trouvé</span>
+                } @else {
+                  <span class="badge badge--not-found">Impossible</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Zone de visualisation -->
+      <div class="viz-area">
+        @switch (viewMode()) {
+          @case ('grid') {
+            <div class="grid-wrapper" (mouseleave)="onMouseUp()">
+              <div class="grid"
+                   [style.--grid-cols]="cols()"
+                   [style.--grid-rows]="rows()">
+                @for (cell of grid(); track cellKey(cell)) {
+                  <div class="cell"
+                      [class]="'cell--' + cell.state"
+                      [style]="cellStyle(cell)"
+                      (mousedown)="onCellMouseDown(cell)"
+                      (mouseenter)="onCellMouseEnter(cell)"
+                      (mouseup)="onMouseUp()">
+                      @if(FIXED_DRAW_TOOLS.some(tool => tool.key === cell.state)){
+                        <div class="icon-btn">{{ FIXED_DRAW_TOOLS.find(tool => tool.key === cell.state)?.icon }}</div>
+                      }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+          @case ('graph') {
+            <app-graph-renderer
+              [vertexCount]="graphVertexCount()"
+              [edges]="graphEdges()"
+              [directed]="graphDirected()" />
+          }
+          @case ('tree') {
+            <app-tree-renderer
+              [vertexCount]="treeVertexCount()"
+              [edges]="treeEdges()" />
+          }
+        }
+      </div>
+
+      <!-- Paramètres -->
+      @if (showParams()) {
+        <app-dynamic-controls
+          [label]="'Paramètres'"
+          [controls]="paramsControls()" />
+      }
+
+      <!-- Input -->
+      @if (showInput()) {
+        <app-dynamic-controls
+          [label]="'Entrée'"
+          [controls]="inputControls()" />
+      }
+
+    </main>
+
+    <!-- ── Panneau d'information ── -->
+    @if (selectedAlgorithmMetadata(); as metadata) {
+      <app-algorithm-information-panel [metadata]="metadata" />
+    }
+
+  </div>
+</div>

@@ -1,0 +1,12 @@
+<div class="section">
+  @if(label()){
+    <span class="param-label">{{ label() }}</span>
+  }
+  <button
+    class="icon-btn" 
+    [title]="title()"
+    [disabled]="disabled()" 
+    (click)="click()"
+    [class.is-active]="isActive()"
+    [aria-label]="title()">{{ character() }}</button>
+</div>

@@ -1,0 +1,64 @@
+<aside class="info-panel">
+
+  <div class="info-panel-header">
+    <span class="info-panel-title">{{ metadata().name }}</span>
+  </div>
+
+  <div class="complexity-grid">
+    <div class="complexity-cell">
+      <span class="cell-label">Temps</span>
+      <span class="cell-value color-avg">{{ metadata().timeComplexity }}</span>
+    </div>
+    <div class="complexity-cell">
+      <span class="cell-label">Espace</span>
+      <span class="cell-value color-space">{{ metadata().spaceComplexity }}</span>
+    </div>
+    <div class="complexity-cell">
+      <span class="cell-label">Optimal</span>
+      <span class="cell-value" [class]="metadata().optimal.startsWith('Oui') ? 'color-best' : 'color-worst'">
+        {{ metadata().optimal.startsWith('Oui') ? '✓' : '✗' }}
+      </span>
+    </div>
+    <div class="complexity-cell">
+      <span class="cell-label">Complet</span>
+      <span class="cell-value" [class]="metadata().complete.startsWith('Oui') ? 'color-best' : 'color-worst'">
+        {{ metadata().complete.startsWith('Oui') ? '✓' : '✗' }}
+      </span>
+    </div>
+  </div>
+
+  <div class="info-description">
+    <p class="description-text">{{ metadata().description }}</p>
+    <a
+      class="description-link"
+      [href]="metadata().wikipediaUrl"
+      target="_blank"
+      rel="noopener noreferrer">
+      Voir sur Wikipédia ↗
+    </a>
+  </div>
+
+  <div class="complexity-detail">
+    <div class="detail-row">
+      <span class="detail-label">Temps</span>
+      <span class="detail-value color-avg">{{ metadata().timeComplexity }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Espace</span>
+      <span class="detail-value color-space">{{ metadata().spaceComplexity }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Optimal</span>
+      <span class="detail-value" [class]="metadata().optimal.startsWith('Oui') ? 'color-best' : 'color-worst'">
+        {{ metadata().optimal }}
+      </span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Complet</span>
+      <span class="detail-value" [class]="metadata().complete.startsWith('Oui') ? 'color-best' : 'color-worst'">
+        {{ metadata().complete }}
+      </span>
+    </div>
+  </div>
+
+</aside>

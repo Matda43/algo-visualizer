@@ -1,0 +1,16 @@
+<div class="section">
+  @if(label()){
+    <span class="param-label">{{ label() }}</span>
+  }
+  <select 
+    class="select-field"
+    [value]="value()"
+    [disabled]="disabled()"
+    (change)="valueChange($any($event.target).value)"
+    [title]="title()"
+    [aria-label]="title()">
+    @for (option of normalizedOptions(); track option.value) {
+      <option [value]="option.value">{{ option.label }}</option>
+    }
+  </select>
+</div>

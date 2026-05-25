@@ -1,0 +1,37 @@
+<aside class="sidebar">
+
+  <!-- Mode Comparaison -->
+   @if(multipleSelection()){
+    <div class="sidebar-section">
+      <span class="bar-label">{{ multipleSelectionTitle() }}</span>
+      <app-toggle-switch 
+        [(active)]="multipleSelectionActive" 
+        [disabled]="disabled()" 
+        (activeChange)="multipleSelectionValueChange($event)"
+        [label]="multipleSelectionTitle()"/>
+    </div>
+  }
+
+  <!-- Liste des algos -->
+  <div class="sidebar-section">
+    <span class="section-label">{{ label() }}</span>
+    <div class="algo-list">
+      @for (name of names(); track name) {
+        <div class="algo-row">
+          <button 
+            class="algo-btn"
+            [class.is-selected]="namesSelected().includes(name)"
+            [disabled]="disabled()"
+            (click)="onNameUpdate(name)"
+            [title]="nameTitle()"
+            [aria-label]="nameTitle()">
+            <span class="algo-check" aria-hidden="true">@if(namesSelected().includes(name)){ ✓ }</span>{{ name }}</button>
+        </div>
+      }
+    </div>
+    @if (multipleSelectionActive()) {
+      <p class="hint-text">{{ namesSelected().length }} sélectionné(s)</p>
+    }
+  </div>
+
+</aside>

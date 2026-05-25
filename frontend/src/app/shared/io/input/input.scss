@@ -1,0 +1,54 @@
+:host {
+    flex: 1;
+    min-width: 160px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  flex-shrink: 0;
+
+  &--grow {
+    flex: 1;
+    min-width: 160px;
+  }
+}
+
+.param-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ── IO Input ── */
+.input {
+  flex: 1;
+  min-width: 100%;
+  background: var(--border-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.12s;
+  line-height: 1.4;
+
+  &:focus { border-color: var(--border-hover); }
+  &::placeholder { color: var(--text); }
+  &:disabled { opacity: 0.35; }
+}
+
+.hint {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text);
+  white-space: nowrap;
+}

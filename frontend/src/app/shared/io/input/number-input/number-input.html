@@ -1,0 +1,39 @@
+<div class="section">
+  <span class="param-label">{{ label() }}</span>
+  <div class="number-input" [class.disabled]="disabled()">
+    @if (canDec()) {
+      <button
+        class="number-btn left"
+        [disabled]="decDisabled() || disabled()"
+        (click)="decClick()"
+        [title]="decTitle()"
+        [aria-label]="decTitle()"
+      >
+      −
+      </button>
+    }
+    <input
+      type="number"
+      class="number-field"
+      [value]="value()"
+      [min]="valueMin()"
+      [max]="valueMax()"
+      [title]="title()"
+      [disabled]="valueDisabled() || disabled()"
+      (change)="valueChange(+$any($event.target).value)"
+      [aria-label]="title()"
+      [style]="valueStyle()"
+    />
+    @if(canInc()) {
+      <button
+        class="number-btn right"
+        [disabled]="incDisabled() || disabled()"
+        (click)="incClick()"
+        [title]="incTitle()"
+        [aria-label]="incTitle()"
+      >
+      +
+      </button>
+    }
+  </div>
+</div>
