@@ -1,36 +1,50 @@
 <aside class="code-panel">
+
+  <!-- En-tête -->
   <div class="code-panel-header">
-    <span class="code-panel-title">{{ metaData().name }}</span>
+    <span class="code-panel-title">{{ metadata().name }}</span>
   </div>
 
-  <app-complexity-grid [metadata]="metaData()" />
+  <!-- Grille de mesures générique -->
+  <div class="measures-grid" [class]="'measures-grid--' + metadata().measures.length">
+    @for (measure of metadata().measures; track measure.label) {
+      <div class="measure-cell">
+        <span class="measure-label">{{ measure.label }}</span>
+        <span class="measure-value" [class]="measure.colorClass">{{ measure.value }}</span>
+      </div>
+    }
+  </div>
 
+  <!-- Description + lien Wikipedia -->
   <div class="code-description">
-    <p class="description-text">{{ metaData().description }}</p>
-    <a 
-      class="description-link" 
-      [href]="metaData().wikipediaUrl" 
-      target="_blank" 
+    <p class="description-text">{{ metadata().description }}</p>
+    <a
+      class="description-link"
+      [href]="metadata().wikipediaUrl"
+      target="_blank"
       rel="noopener noreferrer">
       Voir sur Wikipédia ↗
     </a>
   </div>
 
-  <div class="code-controls">
-    <app-select-option 
-      [value]="selectedLanguage()" 
-      [options]="availableLanguages()"
-      (valueChanged)="selectLanguage($event)" 
-      [title]="'Langage'"/>
-  </div>
+  <!-- Bloc code (uniquement si l'algo a du code) -->
+  @if (hasCode()) {
+    <div class="code-controls">
+      <app-select-option
+        [value]="selectedLanguage()"
+        [options]="availableLanguages()"
+        (valueChanged)="selectLanguage($event)"
+        [title]="'Langage'" />
+    </div>
 
-  <div class="code-body">
-    @for (line of codeLines(); track $index) {
-      <div class="code-line">
-        <span class="line-number" aria-hidden="true">{{ $index + 1 }}</span>
-        <span class="line-content" [innerHTML]="highlightLine(line)"></span>
-      </div>
-    }
-  </div>
+    <div class="code-body">
+      @for (line of codeLines(); track $index) {
+        <div class="code-line">
+          <span class="line-number" aria-hidden="true">{{ $index + 1 }}</span>
+          <span class="line-content" [innerHTML]="highlightLine(line)"></span>
+        </div>
+      }
+    </div>
+  }
 
 </aside>

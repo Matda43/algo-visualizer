@@ -1,0 +1,62 @@
+<svg class="graph-svg"
+     viewBox="0 0 800 500"
+     xmlns="http://www.w3.org/2000/svg"
+     role="img"
+     aria-label="Visualisation du graphe">
+
+  <!-- Définitions : marqueur flèche -->
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6"
+            refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" class="arrowhead" />
+    </marker>
+    <marker id="arrowhead-path" markerWidth="8" markerHeight="6"
+            refX="6" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" class="arrowhead arrowhead--path" />
+    </marker>
+  </defs>
+
+  <!-- Arêtes -->
+  @for (edge of edgesWithMidpoint(); track edge.key) {
+    <g class="edge-group">
+      <line
+        [attr.x1]="lineStart(edge.from, edge.to).x"
+        [attr.y1]="lineStart(edge.from, edge.to).y"
+        [attr.x2]="lineEnd(edge.from, edge.to).x"
+        [attr.y2]="lineEnd(edge.from, edge.to).y"
+        [class]="edge.isPath ? 'edge edge--path' : 'edge'"
+        [attr.marker-end]="directed() ? (edge.isPath ? 'url(#arrowhead-path)' : 'url(#arrowhead)') : null" />
+
+      <!-- Poids affiché au milieu de l'arête -->
+      <text
+        [attr.x]="edge.midX"
+        [attr.y]="edge.midY - 6"
+        class="edge-label"
+        text-anchor="middle">
+        {{ edge.weight }}
+      </text>
+    </g>
+  }
+
+  <!-- Sommets -->
+  @for (vertex of vertices(); track vertex.id) {
+    <g [class]="vertexClass(vertex.id)"
+       (click)="vertexClicked.emit(vertex.id)"
+       role="button"
+       [attr.aria-label]="'Sommet ' + vertex.id">
+      <circle
+        [attr.cx]="vertex.x"
+        [attr.cy]="vertex.y"
+        r="22"
+        class="vertex-circle" />
+      <text
+        [attr.x]="vertex.x"
+        [attr.y]="vertex.y + 5"
+        class="vertex-label"
+        text-anchor="middle">
+        {{ vertex.id }}
+      </text>
+    </g>
+  }
+
+</svg>

@@ -5,8 +5,9 @@ import { NumberInputComponent } from "../io/input/number-input/number-input";
 import { SelectOptionComponent } from "../select-option/select-option";
 import { SliderComponent } from "../slider/slider";
 import { ToggleSwitchComponent } from "../toggle-switch/toggle-switch";
-import { ControlConfig } from "../control-config.model";
-
+import { GridElementListComponent } from "../grid-element-list/grid-element-list";
+import { ControlConfig, ElementListControlConfig } from "../control-config.model";
+import { GridElement } from "../../features/pathfinding/models/pathfinding.models";
 @Component({
   selector: 'app-dynamic-controls',
   standalone: true,
@@ -17,13 +18,26 @@ import { ControlConfig } from "../control-config.model";
     CharacterButtonComponent,
     NumberInputComponent,
     SliderComponent,
+    GridElementListComponent,
   ],
   templateUrl: './dynamic-controls.html',
   styleUrl:    './dynamic-controls.scss',
 })
 export class DynamicControlsComponent {
-
-  label = input<string>();
+  label    = input<string>();
   controls = input.required<ControlConfig[][]>();
 
+  // ── Helpers typés pour les nouveaux types ──────────────────────────────────
+
+  asElementList(control: ControlConfig): ElementListControlConfig {
+    return control as ElementListControlConfig;
+  }
+
+  onElementsChange(control: ControlConfig, elements: GridElement[]): void {
+    (control as ElementListControlConfig).onElementsChange(elements);
+  }
+
+  onElementSelected(control: ControlConfig, element: GridElement): void {
+    (control as ElementListControlConfig).onSelectedChange(element);
+  }
 }

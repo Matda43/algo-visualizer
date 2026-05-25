@@ -3,10 +3,15 @@ import { Subject, Subscription, timer, takeUntil } from 'rxjs';
 import { WebsocketService } from '../../core/websocket';
 import { AlgoMetadataService } from './services/algo-metadata.service';
 import { AlgoMetadata } from './models/algo-metadata.model';
-import { AlgoInstance, Bar, SortStep, ExecuteResult, DATA_TYPES, DataType, ViewMode, buildOptionType, VIEW_MODES } from './models/sorting.models';
+import {
+  AlgoInstance, Bar, SortStep, ExecuteResult,
+  DATA_TYPES, DataType, ViewMode, buildOptionType, VIEW_MODES
+} from './models/sorting.models';
+import { AlgorithmMetadata, buildSortingMetadata } from '../../shared/algorithm-information-panel/algorithm-metadata.model';
 import { VizInstanceComponent } from './viz-instance/viz-instance';
-import { AlgorithmInformationPanelComponent } from "../../shared/algorithm-information-panel/algorithm-information-panel";import { AlgorithmListPanelComponent } from "../../shared/algorithm-list-panel/algorithm-list-panel";
-import { DynamicControlsComponent } from "../../shared/dynamic-controls/dynamic-controls";
+import { AlgorithmInformationPanelComponent } from '../../shared/algorithm-information-panel/algorithm-information-panel';
+import { AlgorithmListPanelComponent } from '../../shared/algorithm-list-panel/algorithm-list-panel';
+import { DynamicControlsComponent } from '../../shared/dynamic-controls/dynamic-controls';
 import { ControlConfig } from '../../shared/control-config.model';
 
 export type CodeLanguage = string;
@@ -23,7 +28,12 @@ interface AlgoQueue {
 @Component({
   selector:    'app-sorting',
   standalone:  true,
-  imports: [VizInstanceComponent, AlgorithmInformationPanelComponent, AlgorithmListPanelComponent, DynamicControlsComponent],
+  imports: [
+    VizInstanceComponent,
+    AlgorithmInformationPanelComponent,
+    AlgorithmListPanelComponent,
+    DynamicControlsComponent,
+  ],
   templateUrl: './sorting.html',
   styleUrl:    './sorting.scss',
 })
@@ -34,9 +44,9 @@ export class SortingComponent implements OnInit, OnDestroy {
   private readonly algoMetadataService = inject(AlgoMetadataService);
 
   // ── Constants ──────────────────────────────────────────────────────────────
-  readonly ARRAY_MAX_SIZE: number = 1000;
-  readonly ARRAY_MIN_SIZE: number = 2;
-  readonly OFFSET_VALUE: number = 10;
+  readonly ARRAY_MAX_SIZE = 1000;
+  readonly ARRAY_MIN_SIZE = 2;
+  readonly OFFSET_VALUE   = 10;
 
   paramsControls = computed((): ControlConfig[][] => [
     [
@@ -46,8 +56,7 @@ export class SortingComponent implements OnInit, OnDestroy {
         title: 'Mode d\'affichage',
         value: this.viewMode(),
         options: buildOptionType(VIEW_MODES),
-        valueChanged: (value: string) => this.selectViewMode(value),
-        disabled: this.isRunning() || this.isPaused()
+        valueChanged: (value: string) => this.selectViewMode(value)
       },
       {
         type: 'slider',
@@ -59,29 +68,32 @@ export class SortingComponent implements OnInit, OnDestroy {
         valueMin: 1,
         valueMax: 500,
         valueChanged: (value: number) => this.onSpeedChange(value),
-      }
-    ]
+      },
+    ],
   ]);
+
   inputControls = computed((): ControlConfig[][] => [
     [
-      {
-        type: 'character-button',
-        label: 'Réinit.',
-        title: 'Réinitialiser',
-        character: '↺',
-        clicked: () => this.reinitialize(),
-        disabled: this.isRunning() || this.isPaused()
-      },
       {
         type: 'toggle',
         label: this.manualInput() ? 'Manuel' : 'Auto.',
         title: 'Mode de génération',
         active: this.manualInput(),
-        activeChange: (v) => this.manualInput.set(v),
-        disabled: this.isRunning() || this.isPaused()
-      }
-    ],
-    [
+        activeChange: (value) => this.manualInput.set(value),
+        disabled: this.isRunning() || this.isPaused(),
+      },
+      {
+        type: 'select',
+        label: 'Type',
+        title: 'Type de données',
+        value: this.selectedDataType(),
+        options: buildOptionType(DATA_TYPES),
+        valueChanged: (value: string) => this.selectDataType(value),
+        disabled: this.isRunning() || this.isPaused(),
+      },
+      {
+        type: 'empty'
+      },
       {
         type: 'character-button',
         label: 'Régén.',
@@ -89,7 +101,7 @@ export class SortingComponent implements OnInit, OnDestroy {
         character: '⟳',
         clicked: () => this.generateArray(),
         disabled: this.isRunning() || this.isPaused(),
-        hidden: this.manualInput()
+        hidden: this.manualInput(),
       },
       {
         type: 'number-input',
@@ -108,7 +120,7 @@ export class SortingComponent implements OnInit, OnDestroy {
         incClicked: () => this.incrementSize(),
         incDisabled: this.arraySize() >= this.ARRAY_MAX_SIZE,
         disabled: this.isRunning() || this.isPaused(),
-        hidden: this.manualInput()
+        hidden: this.manualInput(),
       },
       {
         type: 'number-input',
@@ -123,7 +135,7 @@ export class SortingComponent implements OnInit, OnDestroy {
         incTitle: 'Augmenter la limite minimale',
         incClicked: () => this.incrementMin(),
         disabled: this.isRunning() || this.isPaused(),
-        hidden: this.manualInput()
+        hidden: this.manualInput(),
       },
       {
         type: 'number-input',
@@ -138,45 +150,43 @@ export class SortingComponent implements OnInit, OnDestroy {
         incTitle: 'Augmenter la limite maximale',
         incClicked: () => this.incrementMax(),
         disabled: this.isRunning() || this.isPaused(),
-        hidden: this.manualInput()
-      }
+        hidden: this.manualInput(),
+      },
     ],
     [
-      {
-        type: 'select',
-        label: 'Type',
-        title: 'Type de données',
-        value: this.selectedDataType(),
-        options: buildOptionType(DATA_TYPES),
-        valueChanged: (value: string) => this.selectDataType(value),
-        disabled: this.isRunning() || this.isPaused()
-      },
       {
         type: 'input',
         label: 'Données',
         title: 'Valeurs à trier',
         placeholder: 'Ex: 5, 3, 8, 1 (virgule ou espace)',
+        rows: 2,
         value: this.userInputRaw(),
         valueChanged: (value: string) => this.userInputRaw.set(value),
         blured: () => this.generateArray(),
         disabled: this.isRunning() || this.isPaused(),
-        hidden: !this.manualInput()
+        hidden: !this.manualInput(),
       },
       {
         type: 'input',
         label: 'Données',
         title: 'Valeurs à trier',
+        rows: 2,
         value: this.initialArray().join(', '),
         disabled: true,
-        hidden: this.manualInput()
-      }
-    ]
+        hidden: this.manualInput(),
+      },
+    ],
   ]);
-
 
   // ── Metadata (from backend) ────────────────────────────────────────────────
   allMetadata  = signal<AlgoMetadata[]>([]);
   allAlgoNames = computed(() => this.allMetadata().map(meta => meta.name));
+
+  /** Métadonnées converties en modèle unifié pour le panel */
+  selectedAlgorithmMetadata = computed((): AlgorithmMetadata | null => {
+    const raw = this.allMetadata().find(meta => meta.name === this.selectedCodeAlgo());
+    return raw ? buildSortingMetadata(raw) : null;
+  });
 
   // ── UI state ───────────────────────────────────────────────────────────────
   comparisonMode = signal(false);
@@ -198,25 +208,25 @@ export class SortingComponent implements OnInit, OnDestroy {
   selectedDataType = signal<DataType>('int');
 
   // ── Array params ───────────────────────────────────────────────────────────
-  arraySize     = signal(50);
-  speedMs       = signal(1);
-  minValue      = signal(0);
-  maxValue      = signal(300);
-  manualInput   = signal(false);
-  userInputRaw  = signal('');
+  arraySize    = signal(50);
+  speedMs      = signal(1);
+  minValue     = signal(0);
+  maxValue     = signal(300);
+  manualInput  = signal(false);
+  userInputRaw = signal('');
   outputNumbers = signal<number[]>([]);
 
   // ── Viz instances ──────────────────────────────────────────────────────────
   instances = signal<AlgoInstance[]>([]);
 
   // ── Private ────────────────────────────────────────────────────────────────
-  private readonly destroy$  = new Subject<void>();
-  private currentArray:      number[] = [];
-  private initialArray       = signal<number[]>([]);
-  private algoQueues:        AlgoQueue[] = [];
-  private currentSessionId:  string | null = null;
-  private syncScheduled      = false;
-  private syncRetryTimer:    ReturnType<typeof setTimeout> | null = null;
+  private readonly destroy$ = new Subject<void>();
+  private currentArray:     number[] = [];
+  private initialArray      = signal<number[]>([]);
+  private algoQueues:       AlgoQueue[] = [];
+  private currentSessionId: string | null = null;
+  private syncScheduled     = false;
+  private syncRetryTimer:   ReturnType<typeof setTimeout> | null = null;
 
   // ── Computed ───────────────────────────────────────────────────────────────
 
@@ -226,12 +236,13 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   showNextStep = computed(() => this.isPaused() && this.isRunning());
 
-  selectedMetadata = computed(() => this.allMetadata().find((meta) => meta.name === this.selectedCodeAlgo()));
-
   parsedInput = computed(() => {
     const rawInput = this.userInputRaw().trim();
     if (!rawInput) return null;
-    const numbers = rawInput.split(/[,;\s]+/).map(value => parseFloat(value)).filter(value => !isNaN(value));
+    const numbers = rawInput
+      .split(/[,;\s]+/)
+      .map(value => parseFloat(value))
+      .filter(value => !isNaN(value));
     return numbers.length > 0 ? numbers : null;
   });
 
@@ -251,7 +262,9 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.syncRetryTimer) clearTimeout(this.syncRetryTimer);
-    if (this.currentSessionId) this.websocketService.send('/app/session.stop', this.currentSessionId);
+    if (this.currentSessionId) {
+      this.websocketService.send('/app/session.stop', this.currentSessionId);
+    }
     this.algoQueues.forEach(queue => {
       if (queue.sessionId) this.websocketService.send('/app/session.stop', queue.sessionId);
     });
@@ -317,8 +330,6 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
   }
 
-  
-
   // ── Array generation ───────────────────────────────────────────────────────
 
   generateArray(): void {
@@ -326,11 +337,9 @@ export class SortingComponent implements OnInit, OnDestroy {
     let arr: number[];
 
     if (this.manualInput() && parsedInput) {
-      // Mode manuel avec saisie valide
       arr = parsedInput.map(value => this.normalizeValue(value));
       this.arraySize.set(arr.length);
     } else {
-      // Mode automatique OU mode manuel sans saisie valide → génération auto
       const min   = this.minValue();
       const max   = this.maxValue();
       const range = max - min;
@@ -364,19 +373,18 @@ export class SortingComponent implements OnInit, OnDestroy {
   }
 
   incrementSize(): void {
-    this.arraySize.update(value => Math.min(this.ARRAY_MAX_SIZE, Math.max(this.ARRAY_MIN_SIZE, value + 1)));
+    this.arraySize.update(v => Math.min(this.ARRAY_MAX_SIZE, Math.max(this.ARRAY_MIN_SIZE, v + 1)));
     this.generateArray();
   }
 
   decrementSize(): void {
-    this.arraySize.update(value => Math.min(this.ARRAY_MAX_SIZE, Math.max(this.ARRAY_MIN_SIZE, value - 1)));
+    this.arraySize.update(v => Math.min(this.ARRAY_MAX_SIZE, Math.max(this.ARRAY_MIN_SIZE, v - 1)));
     this.generateArray();
   }
 
   onSpeedChange(newSpeed: number): void {
     this.speedMs.set(newSpeed);
     if (!this.isRunning()) return;
-
     if (this.comparisonMode()) {
       this.algoQueues.forEach(queue => {
         if (queue.sessionId) {
@@ -390,50 +398,27 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   onMinValueChange(value: number): void  { this.minValue.set(value);  this.generateArray(); }
   onMaxValueChange(value: number): void  { this.maxValue.set(value);  this.generateArray(); }
-  decrementMin(): void { 
-    this.minValue.update(value => value - this.OFFSET_VALUE); 
-    this.generateArray(); 
-  }
-  incrementMin(): void { 
-    this.minValue.update(value => value + this.OFFSET_VALUE); 
-    this.generateArray(); 
-  }
-  decrementMax(): void { 
-    this.maxValue.update(value => value - this.OFFSET_VALUE);
-    this.generateArray();
-  }
-  incrementMax(): void {
-    this.maxValue.update(value => value + this.OFFSET_VALUE);
-    this.generateArray();
-  }
+  decrementMin(): void { this.minValue.update(v => v - this.OFFSET_VALUE); this.generateArray(); }
+  incrementMin(): void { this.minValue.update(v => v + this.OFFSET_VALUE); this.generateArray(); }
+  decrementMax(): void { this.maxValue.update(v => v - this.OFFSET_VALUE); this.generateArray(); }
+  incrementMax(): void { this.maxValue.update(v => v + this.OFFSET_VALUE); this.generateArray(); }
 
   // ── Mode toggles ───────────────────────────────────────────────────────────
 
-  /**
-   * Switch le mode comparaison.
-   * En mode solo → comparaison : on garde tous les algos sélectionnés et on réinitialise.
-   * En mode comparaison → solo : on ne garde que le premier algo sélectionné et on réinitialise.
-   */
   toggleComparisonMode(): void {
     if (this.isRunning()) return;
-    
     this.selectedCodeAlgo.set(null);
-
     if (!this.comparisonMode()) {
-      // Retour en solo : ne garder que le premier algo
       const firstAlgo = this.selectedAlgos()[0];
       this.selectedAlgos.set([firstAlgo]);
       this.selectedCodeAlgo.set(firstAlgo);
     }
-
-    // Réinitialiser l'array dans les deux cas pour repartir d'un état propre
     this.generateArray();
   }
 
   toggleAlgo(algoName: string): void {
     if (this.isRunning()) return;
     const current = this.selectedAlgos();
-
     if (this.comparisonMode()) {
       const updated = current.includes(algoName)
         ? current.filter(name => name !== algoName)
@@ -445,23 +430,17 @@ export class SortingComponent implements OnInit, OnDestroy {
       this.selectedAlgos.set([algoName]);
       this.selectedCodeAlgo.set(algoName);
     }
-
     this.rebuildInstances(this.currentArray);
   }
 
-  toggleSidebar(): void               { this.sidebarOpen.update(value => !value); }
-  selectViewMode(mode: string): void {
-    if(mode as ViewMode){
-      this.viewMode.set(mode as ViewMode);
-    }
-  }
+  toggleSidebar(): void { this.sidebarOpen.update(v => !v); }
 
-  toggleCodePanel(algoName: string): void {
-    this.selectedCodeAlgo.update(current => current === algoName ? null : algoName);
+  selectViewMode(mode: string): void {
+    if (mode as ViewMode) this.viewMode.set(mode as ViewMode);
   }
 
   selectDataType(type: string): void {
-    if(type as DataType){
+    if (type as DataType) {
       this.selectedDataType.set(type as DataType);
       this.generateArray();
     }
@@ -482,12 +461,10 @@ export class SortingComponent implements OnInit, OnDestroy {
   togglePause(): void {
     const nowPaused = !this.isPaused();
     this.isPaused.set(nowPaused);
-
     if (nowPaused && this.syncRetryTimer) {
       clearTimeout(this.syncRetryTimer);
       this.syncRetryTimer = null;
     }
-
     if (this.comparisonMode()) {
       this.algoQueues.forEach(queue => {
         if (!queue.sessionId) return;
@@ -508,7 +485,6 @@ export class SortingComponent implements OnInit, OnDestroy {
 
   nextStep(): void {
     if (!this.isPaused()) return;
-
     if (this.comparisonMode()) {
       this.algoQueues
         .filter(queue => !queue.done && queue.sessionId)
@@ -624,7 +600,6 @@ export class SortingComponent implements OnInit, OnDestroy {
     if (activeQueues.length === 0) return;
 
     const allQueuesReady = activeQueues.every(queue => queue.queue.length > 0);
-
     if (!allQueuesReady) {
       if (this.syncRetryTimer) clearTimeout(this.syncRetryTimer);
       this.syncRetryTimer = setTimeout(() => {
@@ -635,7 +610,6 @@ export class SortingComponent implements OnInit, OnDestroy {
     }
 
     this.syncScheduled = true;
-
     const delay = this.speedMs();
 
     const proceed = () => {
@@ -666,9 +640,7 @@ export class SortingComponent implements OnInit, OnDestroy {
     if (delay <= 1) {
       Promise.resolve().then(proceed);
     } else {
-      timer(delay)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(proceed);
+      timer(delay).pipe(takeUntil(this.destroy$)).subscribe(proceed);
     }
   }
 

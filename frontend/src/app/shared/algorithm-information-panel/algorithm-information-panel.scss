@@ -1,9 +1,9 @@
 :host {
-    display: flex;
+  display: flex;
 }
 
 /* ══════════════════════════════════════════════
-   CODE PANEL
+   PANEL
    ══════════════════════════════════════════════ */
 .code-panel {
   width: 360px;
@@ -21,7 +21,6 @@
   border-bottom: 1px solid var(--border-light);
   background-color: var(--danger);
   flex-shrink: 0;
-  align-items: center;
   text-align: center;
 }
 
@@ -35,6 +34,55 @@
   text-align: center;
 }
 
+/* ══════════════════════════════════════════════
+   GRILLE DE MESURES (générique)
+   ══════════════════════════════════════════════ */
+.measures-grid {
+  display: grid;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+
+  &--2 { grid-template-columns: repeat(2, 1fr); }
+  &--3 { grid-template-columns: repeat(3, 1fr); }
+  &--4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.measure-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 4px;
+  border-right: 1px solid var(--border);
+  background-color: var(--bg-card);
+
+  &:last-child { border-right: none; }
+}
+
+.measure-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.measure-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+
+  &.color-best  { color: var(--best);          }
+  &.color-avg   { color: var(--color-pivot);   }
+  &.color-worst { color: var(--danger);         }
+  &.color-space { color: var(--accent-2);       }
+  &.color-info  { color: var(--text-subtle);   }
+}
+
+/* ══════════════════════════════════════════════
+   DESCRIPTION
+   ══════════════════════════════════════════════ */
 .code-description {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border-light);
@@ -64,6 +112,9 @@
   &:hover { opacity: 0.7; }
 }
 
+/* ══════════════════════════════════════════════
+   BLOC CODE
+   ══════════════════════════════════════════════ */
 .code-controls {
   display: flex;
   align-items: center;

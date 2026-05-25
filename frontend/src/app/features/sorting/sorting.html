@@ -45,6 +45,12 @@
             [aria-label]="'Étape suivante'">⏭</button>
         }
       }
+      <button 
+        class="action-btn"
+        [disabled]="isRunning() || isPaused()"
+        (click)="reinitialize()"
+        [title]="'Réinitialiser'"
+        [aria-label]="'Réinitialiser'">↺</button>
 
       <div class="action-spacer"></div>
 
@@ -165,9 +171,9 @@
 
     <!-- ── Panneau code (mode solo) ── -->
     @if (selectedCodeAlgo() && !comparisonMode()) {
-      @if (selectedMetadata(); as metaData) {
+      @if (selectedAlgorithmMetadata(); as metaData) {
         <app-algorithm-information-panel
-          [metaData]="metaData"
+          [metadata]="selectedAlgorithmMetadata()!"
           [dataType]="selectedDataType()"/>
       }
     }

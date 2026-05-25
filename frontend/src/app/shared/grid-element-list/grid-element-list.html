@@ -1,0 +1,65 @@
+<div class="element-list-wrapper">
+
+  <div class="element-list-header">
+    <span class="element-list-label">Éléments</span>
+    <button class="add-btn"
+            [disabled]="disabled()"
+            (click)="addElement()"
+            title="Ajouter un élément">+</button>
+  </div>
+
+  <div class="element-list">
+    @for (element of elements(); track element.name) {
+      <button class="element-row"
+           [class.is-selected]="selectedElement() === element"
+           (click)="selectElement(element)"
+           [title]="'Sélectionner ' + element.name">
+
+        <div class="element-swatch" [style.background-color]="element.hexColor"></div>
+
+        <input class="element-name"
+               [value]="element.name"
+               [disabled]="disabled() || !element.deletable"
+               (change)="updateName(element, $any($event.target).value, $event)"
+               (click)="$event.stopPropagation()" />
+
+        <input class="element-color"
+               type="color"
+               [value]="element.hexColor"
+               [disabled]="disabled()"
+               (input)="updateColor(element, $any($event.target).value, $event)"
+               (click)="$event.stopPropagation()"
+               title="Couleur" />
+
+        @if(element.cardinalWeight === infinity){
+          <input class="element-weight element-weight--infinite"
+                [type]="'string'"
+                [value]="'∞'"
+                [disabled]="true"
+                [title]="'Poids cardinal'" />
+        }@else{
+          <input class="element-weight"
+                type="number"
+                [value]="element.cardinalWeight"
+                min="0.1"
+                step="0.1"
+                [disabled]="disabled() || !element.deletable"
+                (change)="updateWeight(element, +$any($event.target).value, $event)"
+                (click)="$event.stopPropagation()"
+                title="Poids cardinal" />
+        }
+
+        @if (element.deletable) {
+          <button class="delete-btn"
+                  [disabled]="disabled()"
+                  (click)="removeElement(element, $event)"
+                  title="Supprimer">✕</button>
+        } @else {
+          <span class="lock-icon" title="Élément système">🔒</span>
+        }
+
+      </button>
+    }
+  </div>
+
+</div>

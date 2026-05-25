@@ -15,7 +15,7 @@ export interface Bar {
   state: 'default' | 'compare' | 'swap' | 'pivot' | 'sorted';
 }
 
-export interface AlgoInstance {
+export interface  AlgoInstance {
   name:          string;
   bars:          Bar[];
   comparisons:   number;

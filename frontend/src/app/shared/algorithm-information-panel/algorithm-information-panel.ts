@@ -1,34 +1,51 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { ComplexityGridComponent } from '../complexity-grid/complexity-grid';
-import { SelectOptionComponent } from '../select-option/select-option';
-import { buildOptionType, DataType } from '../../features/sorting/models/sorting.models';
-import { CodeLanguage } from '../../features/sorting/sorting';
-import { AlgoMetadata } from '../../features/sorting/models/algo-metadata.model';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { SelectOptionComponent } from '../select-option/select-option';
+import { AlgorithmMetadata } from './algorithm-metadata.model';
+import { buildOptionType, DataType } from '../../features/sorting/models/sorting.models';
+
+export type CodeLanguage = string;
 
 @Component({
-  selector: 'app-algorithm-information-panel',
-  standalone: true,
-  imports: [ComplexityGridComponent, SelectOptionComponent],
+  selector:    'app-algorithm-information-panel',
+  standalone:  true,
+  imports:     [SelectOptionComponent],
   templateUrl: './algorithm-information-panel.html',
-  styleUrl: './algorithm-information-panel.scss',
+  styleUrl:    './algorithm-information-panel.scss',
 })
 export class AlgorithmInformationPanelComponent {
 
   private readonly sanitizer = inject(DomSanitizer);
 
-  metaData = input.required<AlgoMetadata>();
-  dataType = input.required<DataType>();
+  metadata = input.required<AlgorithmMetadata>();
+  /** Optionnel : utile uniquement pour les algo de tri */
+  dataType = input<DataType>('int');
 
   selectedLanguage = signal<CodeLanguage>('Java');
 
-  availableLanguages = computed(() => buildOptionType(Object.keys(this.metaData()?.codeByLanguage)));
-  codeLines = computed(() => this.applyDataType(this.metaData()?.codeByLanguage[this.selectedLanguage()] ?? '', this.dataType()).split('\n') );
+  hasCode = computed(() => {
+    const code = this.metadata()?.codeByLanguage;
+    return !!code && Object.keys(code).length > 0;
+  });
 
-  selectLanguage(lang: CodeLanguage): void { this.selectedLanguage.set(lang); }
+  availableLanguages = computed(() =>
+    buildOptionType(Object.keys(this.metadata()?.codeByLanguage ?? {}))
+  );
+
+  codeLines = computed(() => {
+    const code = this.metadata()?.codeByLanguage?.[this.selectedLanguage()] ?? '';
+    return this.applyDataType(code, this.dataType()).split('\n');
+  });
+
+  selectLanguage(lang: CodeLanguage): void {
+    this.selectedLanguage.set(lang);
+  }
 
   private applyDataType(code: string, type: DataType): string {
-    return type === 'int' ? code : code.replace(/\bint(?=\s+\w)/g, type).replace(/\bint\[\]/g, `${type}[]`);
+    if (type === 'int') return code;
+    return code
+      .replace(/\bint(?=\s+\w)/g, type)
+      .replace(/\bint\[\]/g, `${type}[]`);
   }
 
   highlightLine(line: string): SafeHtml {

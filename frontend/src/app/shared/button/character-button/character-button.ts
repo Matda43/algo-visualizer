@@ -1,5 +1,5 @@
 import { Component, input, output } from "@angular/core";
-import { coerceString } from "../../utils/coerce.utils";
+import { coerceBoolean, coerceString } from "../../utils/coerce.utils";
 import { BaseHTMLElementPropertiesComponent } from "../../base-html-element-properties";
 
 @Component({
@@ -14,6 +14,7 @@ export class CharacterButtonComponent extends BaseHTMLElementPropertiesComponent
   // ── Button ──
   clicked = output<void>();
   character = input('', { transform: (v: unknown) => coerceString(v) });
+  isActive = input(false, { transform: (v: unknown) => coerceBoolean(v) });
 
   // ── Actions ──
   click(): void { this.clicked.emit(); }

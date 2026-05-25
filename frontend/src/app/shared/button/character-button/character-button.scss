@@ -41,4 +41,9 @@
   }
 
   &:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  &.is-active {
+    background: var(--bg-card);
+    color: var(--text-subtle);
+  }
 }

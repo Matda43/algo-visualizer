@@ -1,0 +1,35 @@
+<svg class="tree-svg"
+     viewBox="0 0 800 500"
+     xmlns="http://www.w3.org/2000/svg"
+     role="img"
+     aria-label="Visualisation de l'arbre">
+
+  <!-- Arêtes -->
+  @for (edge of treeEdgesResolved(); track edge.key) {
+    <line
+      [attr.x1]="edge.from.x"
+      [attr.y1]="edge.from.y"
+      [attr.x2]="edge.to.x"
+      [attr.y2]="edge.to.y"
+      class="tree-edge" />
+  }
+
+  <!-- Sommets -->
+  @for (node of treeNodes(); track node.id) {
+    <g [class]="vertexClass(node.id)">
+      <circle
+        [attr.cx]="node.x"
+        [attr.cy]="node.y"
+        r="20"
+        class="vertex-circle" />
+      <text
+        [attr.x]="node.x"
+        [attr.y]="node.y + 5"
+        class="vertex-label"
+        text-anchor="middle">
+        {{ node.id }}
+      </text>
+    </g>
+  }
+
+</svg>

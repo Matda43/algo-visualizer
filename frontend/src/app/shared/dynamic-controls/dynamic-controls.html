@@ -1,17 +1,22 @@
 <div class="bottom-bar">
-  @if(label()){
+  @if (label()) {
     <div class="container-controls--label">
       <span class="bar-label">{{ label() }}</span>
     </div>
   }
-  @if(controls() && controls().length > 0){
+  @if (controls() && controls().length > 0) {
     <div class="container-controls">
-      @for (controlsRaw of controls(); track $index) {
-        @if(controlsRaw.some(control => !control.hidden)){
+      @for (controlsRow of controls(); track $index) {
+        @if (controlsRow.some(control => !control.hidden)) {
           <div class="container-controls">
-            @for (control of controlsRaw; track $index) {
+            @for (control of controlsRow.filter(c => !c.hidden); track $index) {
               @if (!control.hidden) {
                 @switch (control.type) {
+                  
+                  @case ('empty') {
+                    <div class="empty"></div>
+                  }
+
                   @case ('select') {
                     <app-select-option
                       [label]="control.label"
@@ -19,18 +24,18 @@
                       [options]="control.options"
                       [title]="control.title"
                       [disabled]="control.disabled"
-                      (valueChanged)="control.valueChanged($event)"
-                    />
+                      (valueChanged)="control.valueChanged($event)" />
                   }
+
                   @case ('toggle') {
                     <app-toggle-switch
                       [label]="control.label"
                       [title]="control.title"
                       [active]="control.active"
                       [disabled]="control.disabled"
-                      (activeChange)="control.activeChange($event)"
-                    />
+                      (activeChange)="control.activeChange($event)" />
                   }
+
                   @case ('input') {
                     <div class="container-controls--expand">
                       <app-input
@@ -40,20 +45,38 @@
                         [rows]="control.rows"
                         [placeholder]="control.placeholder"
                         [disabled]="control.disabled"
-                        (valueChanged)="control?.valueChanged($event)"
-                        (blured)="control.blured?.()"
-                      />
+                        (valueChanged)="control?.valueChanged?.($event)"
+                        (blured)="control.blured?.()" />
                     </div>
                   }
+
                   @case ('character-button') {
                     <app-character-button
                       [label]="control.label"
                       [title]="control.title"
                       [character]="control.character"
                       [disabled]="control.disabled"
-                      (clicked)="control.clicked()"
-                    />
+                      (clicked)="control.clicked()" />
                   }
+
+                  @case ('tool-buttons') {
+                    <div class="tool-buttons-wrapper">
+                      @if (control.label) {
+                        <span class="field-label">{{ control.label }}</span>
+                      }
+                      <div class="tool-buttons-row">
+                        @for (tool of control.tools; track tool.key) {
+                          <app-character-button
+                            [title]="tool.label"
+                            [character]="tool.icon"
+                            [disabled]="control.disabled"
+                            (clicked)="control.onSelect(tool.key)"
+                            [isActive]="control.activeKey === tool.key"/>
+                        }
+                      </div>
+                    </div>
+                  }
+
                   @case ('number-input') {
                     <app-number-input
                       [label]="control.label"
@@ -69,9 +92,9 @@
                       [incDisabled]="control.incDisabled"
                       (decClicked)="control.decClicked?.()"
                       (incClicked)="control.incClicked?.()"
-                      (valueChanged)="control.valueChanged($event)"
-                    />
+                      (valueChanged)="control.valueChanged($event)" />
                   }
+
                   @case ('slider') {
                     <app-slider
                       [label]="control.label"
@@ -82,9 +105,30 @@
                       [title]="control.title"
                       [description]="control.description"
                       [disabled]="control.disabled"
-                      (valueChanged)="control.valueChanged($event)"
-                    />
+                      (valueChanged)="control.valueChanged($event)" />
                   }
+
+                  @case ('element-list') {
+                    <app-grid-element-list
+                      [label]="control.label"
+                      [title]="control.title"
+                      [elements]="asElementList(control).elements"
+                      [selectedElement]="asElementList(control).selectedElement"
+                      [disabled]="control.disabled"
+                      (elementsChange)="onElementsChange(control, $event)"
+                      (selectedChange)="onElementSelected(control, $event)" />
+                  }
+
+                  @case ('validation-errors') {
+                    @if (control.errors.length > 0) {
+                      <div class="validation-errors">
+                        @for (error of control.errors; track error) {
+                          <span class="error-msg">⚠ {{ error }}</span>
+                        }
+                      </div>
+                    }
+                  }
+
                 }
               }
             }
