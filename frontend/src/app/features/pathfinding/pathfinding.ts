@@ -10,7 +10,7 @@ import {
   WallGenerationMode, WALL_OPTIONS,
   TerrainGenerationMode, TERRAIN_OPTIONS,
   GeneratedGrid,
-  GraphEdge, GeneratedGraph,
+  GraphEdge,
   PathStep, PathfindingStats,
   PathfindingMetadata,
   serializeGraphEdges, serializeTreeEdges, serializeGridCells,
